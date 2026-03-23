@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import HomeEditor from "@/components/HomeEditor";
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
 
@@ -293,6 +294,16 @@ export default function AdminDashboard() {
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'dashboard' ? "'FILL' 1" : "'FILL' 0" }}>dashboard</span>
             Tổng quan
           </button>
+
+          <button
+            onClick={() => setActiveTab("homepage")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all ${
+              activeTab === "homepage" ? "bg-primary text-on-primary shadow-md shadow-primary/20" : "text-on-surface-variant hover:bg-surface-container-low"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'homepage' ? "'FILL' 1" : "'FILL' 0" }}>home</span>
+            Trang chủ
+          </button>
           
           <button
             onClick={() => setActiveTab("pages")}
@@ -576,6 +587,8 @@ export default function AdminDashboard() {
           {activeTab === "dashboard" && (
             <div className="animate-fade-in-up py-32 text-center text-on-surface-variant">Tổng quan Dashboard sẽ cập nhật sau.</div>
           )}
+
+          {activeTab === "homepage" && <HomeEditor />}
 
         </div>
       </main>
