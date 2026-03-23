@@ -51,6 +51,8 @@ Trong trang import (hoặc Settings > Environment Variables), thêm:
 
 | Variable           | Giá trị                          | Môi trường              |
 | ------------------ | -------------------------------- | ----------------------- |
+| `ADMIN_USERNAME`    | `antonio246`                     | Production, Preview     |
+| `ADMIN_PASSWORD`    | `Huynh91@`                       | Production, Preview     |
 | `GOOGLE_SCRIPT_URL` | URL Web App từ Google Apps Script | Production, Preview     |
 | `SHEET_ID`          | ID Google Sheet (FAQ + pages)    | Production, Preview     |
 | `OPENAI_API_KEY`    | API key từ OpenAI                | Production, Preview     |
