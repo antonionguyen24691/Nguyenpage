@@ -6,6 +6,14 @@ import Link from "next/link";
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
 
 export default function AdminDashboard() {
+  // ── Auth State ──
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
+
   const [activeTab, setActiveTab] = useState("pages");
   const [isLoaded, setIsLoaded] = useState(false);
   
@@ -13,8 +21,50 @@ export default function AdminDashboard() {
   const [links, setLinks] = useState<any[]>([]);
   const [systemSettings, setSystemSettings] = useState<any>({});
 
+  // ── Check existing session on mount ──
+  useEffect(() => {
+    const token = sessionStorage.getItem("admin_token");
+    if (token) {
+      setIsAuthenticated(true);
+    }
+    setAuthChecked(true);
+  }, []);
+
+  // ── Login handler ──
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError("");
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: loginUsername, password: loginPassword }),
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        sessionStorage.setItem("admin_token", data.token);
+        setIsAuthenticated(true);
+      } else {
+        setLoginError(data.error || "Đăng nhập thất bại.");
+      }
+    } catch {
+      setLoginError("Không thể kết nối đến server.");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("admin_token");
+    setIsAuthenticated(false);
+    setLoginUsername("");
+    setLoginPassword("");
+  };
+
   // Load from LocalStorage on mount
   useEffect(() => {
+    if (!isAuthenticated) return;
     const storedPages = localStorage.getItem("banker_pages");
     if (storedPages) {
       setPages(JSON.parse(storedPages));
@@ -53,7 +103,7 @@ export default function AdminDashboard() {
     }
 
     setIsLoaded(true);
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -149,6 +199,79 @@ export default function AdminDashboard() {
     setLinks(links.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
   };
 
+  if (!authChecked) return null;
+
+  // ── LOGIN SCREEN ──
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="w-full max-w-sm">
+          <div className="bg-white rounded-2xl shadow-xl border border-outline-variant/20 overflow-hidden animate-fade-in">
+            <div className="h-2 bg-gradient-to-r from-primary to-secondary"></div>
+            <div className="p-8">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-3xl text-primary">admin_panel_settings</span>
+                </div>
+                <h1 className="font-headline font-bold text-2xl text-on-surface">Nguyen Page CMS</h1>
+                <p className="text-sm text-on-surface-variant mt-1">Đăng nhập để quản trị hệ thống</p>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-extrabold text-on-surface/70 uppercase tracking-widest mb-2">Tên đăng nhập</label>
+                  <input
+                    id="admin-username"
+                    type="text"
+                    required
+                    autoFocus
+                    className="w-full px-4 py-3 rounded-xl border border-outline-variant/30 focus:border-primary outline-none transition-all font-medium text-sm text-on-surface bg-surface/50"
+                    placeholder="Username"
+                    value={loginUsername}
+                    onChange={(e) => setLoginUsername(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-extrabold text-on-surface/70 uppercase tracking-widest mb-2">Mật khẩu</label>
+                  <input
+                    id="admin-password"
+                    type="password"
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-outline-variant/30 focus:border-primary outline-none transition-all font-medium text-sm text-on-surface bg-surface/50"
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                  />
+                </div>
+
+                {loginError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">error</span>
+                    {loginError}
+                  </div>
+                )}
+
+                <button
+                  id="admin-login-btn"
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-[#004d45] transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {loginLoading ? (
+                    <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Đang xác thực...</>
+                  ) : (
+                    <><span className="material-symbols-outlined text-[18px]">login</span> Đăng nhập</>
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+          <p className="text-center text-xs text-on-surface-variant/50 mt-6">© 2026 Nguyen Page. Protected admin area.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isLoaded) return null;
 
   return (
@@ -202,11 +325,15 @@ export default function AdminDashboard() {
           </button>
         </nav>
 
-        <div className="p-4 border-t border-outline-variant/20">
+        <div className="p-4 border-t border-outline-variant/20 space-y-1">
           <Link href="/" className="flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary font-bold transition-colors px-4 py-2 hover:bg-surface-container-low rounded-lg">
-            <span className="material-symbols-outlined text-[20px]">logout</span>
-            Thoát Admin
+            <span className="material-symbols-outlined text-[20px]">home</span>
+            Về Trang chủ
           </Link>
+          <button onClick={handleLogout} className="w-full flex items-center gap-2 text-sm text-red-500 hover:text-red-700 font-bold transition-colors px-4 py-2 hover:bg-red-50 rounded-lg">
+            <span className="material-symbols-outlined text-[20px]">logout</span>
+            Đăng xuất
+          </button>
         </div>
       </aside>
 
@@ -333,6 +460,12 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
+                        <button 
+                          onClick={() => { setEditingId(link.id); setFormData(link); setIsLinkModalOpen(true); }}
+                          className="px-3 py-1.5 rounded-md text-xs font-bold text-primary hover:bg-primary/10 transition-colors flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">edit</span> Sửa
+                        </button>
                         <button 
                           onClick={() => toggleLinkVisibility(link.id)}
                           className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${link.visible ? 'text-[#071e27]/50 hover:bg-surface-container hover:text-[#071e27]' : 'text-primary hover:bg-primary/10'}`}
@@ -625,22 +758,30 @@ export default function AdminDashboard() {
                      )}
 
                      {/* -- BASIC: IMAGE -- */}
-                     {block.type === 'image' && (
-                       <div className="py-6">
-                          <div className="bg-surface-container-lowest border-2 border-dashed border-outline-variant/30 rounded-xl p-8 text-center relative overflow-hidden group/img">
-                             {block.content && typeof block.content === 'string' ? (
-                               <img src={block.content} className="w-full h-64 object-cover rounded-lg shadow-sm" alt="Preview" />
-                             ) : (
-                               <div className="py-8"><span className="material-symbols-outlined text-4xl text-on-surface-variant opacity-50 mb-2">add_photo_alternate</span><p className="text-sm font-bold text-on-surface-variant mb-1">Dán đường dẫn Hình ảnh (URL)</p></div>
-                             )}
-                             <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md px-4 py-2 rounded-lg flex gap-2 items-center opacity-0 group-hover/img:opacity-100 transition-opacity border border-outline-variant/20 shadow-md">
-                               <span className="material-symbols-outlined text-primary text-[18px]">link</span>
-                               <input type="text" placeholder="Dán link ảnh vào đây..." className="flex-1 bg-transparent text-sm font-mono outline-none text-primary"
-                                 value={block.content} onChange={(e) => updateBlock(block.id, e.target.value)} />
-                             </div>
-                          </div>
-                       </div>
-                     )}
+                      {block.type === 'image' && (
+                        <div className="py-6 space-y-3">
+                           <div className="bg-surface-container-lowest border-2 border-dashed border-outline-variant/30 rounded-xl p-8 text-center relative overflow-hidden group/img">
+                              {(typeof block.content === 'object' ? block.content?.src : block.content) ? (
+                                <img src={typeof block.content === 'object' ? block.content?.src : block.content} className="w-full h-64 object-cover rounded-lg shadow-sm" alt="Preview" />
+                              ) : (
+                                <div className="py-8"><span className="material-symbols-outlined text-4xl text-on-surface-variant opacity-50 mb-2">add_photo_alternate</span><p className="text-sm font-bold text-on-surface-variant mb-1">Dán đường dẫn Hình ảnh (URL)</p></div>
+                              )}
+                              <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md px-4 py-2 rounded-lg flex gap-2 items-center opacity-0 group-hover/img:opacity-100 transition-opacity border border-outline-variant/20 shadow-md">
+                                <span className="material-symbols-outlined text-primary text-[18px]">image</span>
+                                <input type="text" placeholder="Dán link ảnh vào đây..." className="flex-1 bg-transparent text-sm font-mono outline-none text-primary"
+                                  value={typeof block.content === 'object' ? block.content?.src || '' : block.content || ''} 
+                                  onChange={(e) => updateBlock(block.id, { src: e.target.value, url: typeof block.content === 'object' ? block.content?.url || '' : '' })} />
+                              </div>
+                           </div>
+                           <div className="flex items-center gap-2 px-2">
+                              <span className="material-symbols-outlined text-secondary text-[18px]">link</span>
+                              <input type="text" placeholder="Hyperlink khi bấm vào ảnh (VD: /dang-ky hoặc https://...)" 
+                                className="flex-1 text-sm font-mono outline-none border-b border-outline-variant/30 pb-1 text-secondary bg-transparent"
+                                value={typeof block.content === 'object' ? block.content?.url || '' : ''} 
+                                onChange={(e) => updateBlock(block.id, { src: typeof block.content === 'object' ? block.content?.src || '' : block.content || '', url: e.target.value })} />
+                           </div>
+                        </div>
+                      )}
 
                      {block.type === 'button' && (
                        <div className="py-6 text-center border-2 border-dashed border-transparent focus-within:border-primary/30 rounded-xl transition-all flex flex-col items-center justify-center gap-3">

@@ -30,6 +30,18 @@
   --font-label: 'Inter', sans-serif;
 }
 
+/* ── CSS Custom Properties (used by Chatbot.tsx & MultiStepForm.tsx) ── */
+:root {
+  --gradient-start: #00685d;
+  --gradient-end: #4c56af;
+  --primary: #00685d;
+  --muted: #6d7a77;
+  --foreground: #071e27;
+  --surface: #f3faff;
+  --surface-hover: #e6f6ff;
+  --border: #bcc9c5;
+}
+
 body {
   background-color: var(--color-background);
   color: var(--color-on-background);
@@ -37,7 +49,67 @@ body {
   overflow-x: hidden;
 }
 
-/* Smooth scrollbar */
+/* ── Glass & Glow Effects ── */
+.glass {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(188, 201, 197, 0.25);
+}
+
+.glass-light {
+  background: rgba(243, 250, 255, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(188, 201, 197, 0.15);
+}
+
+.glow {
+  box-shadow: 0 8px 32px rgba(0, 104, 93, 0.08), 0 0 0 1px rgba(0, 104, 93, 0.04);
+}
+
+.glow-sm {
+  box-shadow: 0 4px 16px rgba(0, 104, 93, 0.06);
+}
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px) scale(0.96); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 104, 93, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(0, 104, 93, 0); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out both;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* ── Smooth scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -54,4 +126,3 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-outline);
 }
-
