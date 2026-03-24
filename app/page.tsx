@@ -8,7 +8,7 @@ import { defaultHomeConfig, type HomeConfig } from "@/lib/homeConfig";
 export default function Home() {
   const [config, setConfig] = useState<HomeConfig>(defaultHomeConfig);
 
-  useEffect(() => {
+  const loadConfig = () => {
     const stored = localStorage.getItem("banker_home");
     if (stored) {
       try {
@@ -17,6 +17,24 @@ export default function Home() {
         // fallback to defaults
       }
     }
+  };
+
+  useEffect(() => {
+    loadConfig();
+
+    // Cross-tab sync
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "banker_home") loadConfig();
+    };
+    // Same-tab sync (when admin saves in same browser tab/window)
+    const onCustom = () => loadConfig();
+
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("banker_home_updated", onCustom);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("banker_home_updated", onCustom);
+    };
   }, []);
 
   const c = config;

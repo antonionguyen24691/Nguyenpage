@@ -18,6 +18,7 @@ export default function HomeEditor() {
 
   const save = () => {
     localStorage.setItem("banker_home", JSON.stringify(config));
+    window.dispatchEvent(new Event("banker_home_updated"));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
+import DynamicNav from "@/components/DynamicNav";
 
 const inter = Inter({
   variable: "--font-body",
@@ -30,27 +31,8 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
       <body suppressHydrationWarning className="bg-surface text-on-surface font-body selection:bg-primary/20 min-h-full flex flex-col pt-16">
-        {/* Global Navigation */}
-        <nav className="bg-[#f3faff]/80 backdrop-blur-md fixed top-0 left-0 z-50 w-full transition-all">
-          <div className="flex justify-between items-center px-8 h-16 w-full max-w-7xl mx-auto">
-            <div className="flex items-center gap-2">
-              <span className="font-headline font-extrabold text-xl text-[#00685d]">Nguyen Page</span>
-            </div>
-            <div className="hidden md:flex items-center gap-8">
-              <a className="font-headline font-semibold text-sm tracking-wide text-[#00685d] font-bold border-b-2 border-[#00685d] pb-1" href="/">Trang chủ</a>
-              <a className="font-headline font-semibold text-sm tracking-wide text-[#071e27] opacity-70 hover:text-[#00685d] transition-colors duration-200" href="/services">Dịch vụ</a>
-              <a className="font-headline font-semibold text-sm tracking-wide text-[#071e27] opacity-70 hover:text-[#00685d] transition-colors duration-200" href="/support">Hỗ trợ</a>
-            </div>
-            <div className="flex items-center gap-4">
-              <button className="p-2 text-[#00685d] hover:bg-[#dbf1fe]/30 rounded-full transition-all flex items-center justify-center">
-                <span className="material-symbols-outlined">notifications</span>
-              </button>
-              <button className="p-2 text-[#00685d] hover:bg-[#dbf1fe]/30 rounded-full transition-all flex items-center justify-center">
-                <span className="material-symbols-outlined">account_circle</span>
-              </button>
-            </div>
-          </div>
-        </nav>
+        {/* Global Navigation — dynamic from localStorage */}
+        <DynamicNav />
         
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">

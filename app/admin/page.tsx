@@ -115,6 +115,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem("banker_links", JSON.stringify(links));
+      window.dispatchEvent(new Event("banker_links_updated"));
     }
   }, [links, isLoaded]);
 
