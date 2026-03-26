@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, ISeriesApi } from 'lightweight-charts';
+import { createChart, ColorType, ISeriesApi, AreaSeries } from 'lightweight-charts';
 
 type ChartData = {
   time: string;
@@ -42,8 +42,8 @@ export default function FundChart({ data }: FundChartProps) {
     
     chartRef.current = chart;
 
-    // Thêm Area Series
-    const newSeries = (chart as any).addAreaSeries({
+    // Thêm Area Series (V5 Syntax)
+    const newSeries = chart.addSeries(AreaSeries, {
       lineColor: '#2962FF',
       topColor: '#2962FF',
       bottomColor: 'rgba(41, 98, 255, 0.28)',
