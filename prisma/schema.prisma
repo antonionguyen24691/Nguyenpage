@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("STOCK_DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PRO
+  PREMIUM
+}
+
+enum AlertCondition {
+  ABOVE
+  BELOW
+}
+
+enum AlertStatus {
+  ACTIVE
+  PAUSED
+  TRIGGERED
+}
+
+model User {
+  id         String      @id @default(cuid())
+  email      String      @unique
+  name       String?
+  image      String?
+  plan       Plan        @default(FREE)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  apiKeys    ApiKey[]
+  watchlists Watchlist[]
+  alerts     Alert[]
+  webhooks   Webhook[]
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  keyHash     String    @unique
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageLogs   UsageLog[]
+
+  @@index([userId])
+}
+
+model Watchlist {
+  id        String          @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     WatchlistItem[]
+
+  @@index([userId])
+}
+
+model WatchlistItem {
+  id          String    @id @default(cuid())
+  watchlistId String
+  symbol      String
+  createdAt   DateTime  @default(now())
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+
+  @@unique([watchlistId, symbol])
+  @@index([symbol])
+}
+
+model Webhook {
+  id              String    @id @default(cuid())
+  userId          String
+  url             String
+  secret          String
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alerts          Alert[]
+  webhookAttempts WebhookAttempt[]
+
+  @@index([userId])
+}
+
+model Alert {
+  id              String         @id @default(cuid())
+  userId          String
+  webhookId       String?
+  symbol          String
+  target          Float
+  condition       AlertCondition
+  status          AlertStatus    @default(ACTIVE)
+  cooldownMinutes Int            @default(5)
+  lastTriggeredAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  webhook         Webhook?       @relation(fields: [webhookId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([symbol, status])
+}
+
+model UsageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  apiKeyId  String?
+  route     String
+  createdAt DateTime @default(now())
+  apiKey    ApiKey?  @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([apiKeyId, createdAt])
+}
+
+model WebhookAttempt {
+  id          String   @id @default(cuid())
+  webhookId   String
+  alertId     String?
+  deliveryKey String?
+  attemptNo   Int      @default(1)
+  statusCode  Int?
+  success     Boolean  @default(false)
+  payload     Json
+  response    String?
+  createdAt   DateTime @default(now())
+  webhook     Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt])
+}
