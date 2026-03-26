@@ -8,33 +8,20 @@ import { defaultHomeConfig, type HomeConfig } from "@/lib/homeConfig";
 export default function Home() {
   const [config, setConfig] = useState<HomeConfig>(defaultHomeConfig);
 
-  const loadConfig = () => {
-    const stored = localStorage.getItem("banker_home");
-    if (stored) {
-      try {
-        setConfig({ ...defaultHomeConfig, ...JSON.parse(stored) });
-      } catch {
-        // fallback to defaults
+  const loadConfig = async () => {
+    try {
+      const res = await fetch("/api/config?key=home");
+      const data = await res.json();
+      if (data.value) {
+        setConfig({ ...defaultHomeConfig, ...data.value });
       }
+    } catch {
+      // fallback to defaults
     }
   };
 
   useEffect(() => {
     loadConfig();
-
-    // Cross-tab sync
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "banker_home") loadConfig();
-    };
-    // Same-tab sync (when admin saves in same browser tab/window)
-    const onCustom = () => loadConfig();
-
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("banker_home_updated", onCustom);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("banker_home_updated", onCustom);
-    };
   }, []);
 
   const c = config;

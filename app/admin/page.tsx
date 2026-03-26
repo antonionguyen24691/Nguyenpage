@@ -64,65 +64,73 @@ export default function AdminDashboard() {
     setLoginPassword("");
   };
 
-  // Load from LocalStorage on mount
+  // Load from Supabase on mount
   useEffect(() => {
     if (!isAuthenticated) return;
-    const storedPages = localStorage.getItem("banker_pages");
-    if (storedPages) {
-      setPages(JSON.parse(storedPages));
-    } else {
-      setPages([
-        { id: 1, title: "Trang chủ", slug: "/", status: "published", views: "12.5k", blocks: [] },
-        { id: 2, title: "Đăng ký Dịch vụ", slug: "/dang-ky", status: "published", views: "3.2k", blocks: [] },
-        { id: 3, title: "Dịch vụ Tài chính", slug: "/services/bank", status: "draft", views: "0", blocks: [] },
-        { id: 4, title: "Giải pháp SaaS", slug: "/services/saas", status: "published", views: "1.8k", blocks: [] },
-      ]);
-    }
+    const loadConfig = async () => {
+      try {
+        const res = await fetch("/api/config");
+        const data = await res.json();
+        
+        if (data.pages) setPages(data.pages);
+        else setPages([
+          { id: 1, title: "Trang chủ", slug: "/", status: "published", views: "12.5k", blocks: [] },
+          { id: 2, title: "Đăng ký Dịch vụ", slug: "/dang-ky", status: "published", views: "3.2k", blocks: [] },
+          { id: 3, title: "Dịch vụ Tài chính", slug: "/services/bank", status: "draft", views: "0", blocks: [] },
+          { id: 4, title: "Giải pháp SaaS", slug: "/services/saas", status: "published", views: "1.8k", blocks: [] },
+        ]);
 
-    const storedLinks = localStorage.getItem("banker_links");
-    if (storedLinks) {
-      setLinks(JSON.parse(storedLinks));
-    } else {
-      setLinks([
-        { id: 1, label: "Trang chủ", url: "/", order: 1, visible: true },
-        { id: 2, label: "Dịch vụ", url: "/services", order: 2, visible: true },
-        { id: 3, label: "Hỗ trợ", url: "/support", order: 3, visible: true },
-        { id: 4, label: "Blog Tài chính", url: "/blog", order: 4, visible: false },
-      ]);
-    }
+        if (data.links) setLinks(data.links);
+        else setLinks([
+          { id: 1, label: "Trang chủ", url: "/", order: 1, visible: true },
+          { id: 2, label: "Dịch vụ", url: "/services", order: 2, visible: true },
+          { id: 3, label: "Hỗ trợ", url: "/support", order: 3, visible: true },
+          { id: 4, label: "Blog Tài chính", url: "/blog", order: 4, visible: false },
+        ]);
 
-    const storedSettings = localStorage.getItem("banker_settings");
-    if (storedSettings) {
-      setSystemSettings(JSON.parse(storedSettings));
-    } else {
-      setSystemSettings({
-        chatbotName: "Nguyen Page Assistant",
-        chatbotPrompt: "Bạn là chuyên gia tư vấn tài chính & ngân hàng...",
-        knowledgeBaseUrl: "",
-        sheetUrl: "",
-        syncForms: true
-      });
-    }
-
-    setIsLoaded(true);
+        if (data.settings) setSystemSettings(data.settings);
+        else setSystemSettings({
+          chatbotName: "Nguyen Page Assistant",
+          chatbotPrompt: "Bạn là chuyên gia tư vấn tài chính & ngân hàng...",
+          knowledgeBaseUrl: "",
+          sheetUrl: "",
+          syncForms: true
+        });
+      } catch (e) {
+        console.error("Failed to load config from Supabase:", e);
+      }
+      setIsLoaded(true);
+    };
+    loadConfig();
   }, [isAuthenticated]);
 
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem("banker_pages", JSON.stringify(pages));
+      fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "pages", value: pages }),
+      }).catch(console.error);
     }
   }, [pages, isLoaded]);
 
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem("banker_links", JSON.stringify(links));
-      window.dispatchEvent(new Event("banker_links_updated"));
+      fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "links", value: links }),
+      }).catch(console.error);
     }
   }, [links, isLoaded]);
 
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem("banker_settings", JSON.stringify(systemSettings));
+      fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "settings", value: systemSettings }),
+      }).catch(console.error);
     }
   }, [systemSettings, isLoaded]);
 

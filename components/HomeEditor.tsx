@@ -8,19 +8,30 @@ export default function HomeEditor() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("banker_home");
-    if (stored) {
+    const loadConfig = async () => {
       try {
-        setConfig({ ...defaultHomeConfig, ...JSON.parse(stored) });
+        const res = await fetch("/api/config?key=home");
+        const data = await res.json();
+        if (data.value) {
+          setConfig({ ...defaultHomeConfig, ...data.value });
+        }
       } catch { /* use defaults */ }
-    }
+    };
+    loadConfig();
   }, []);
 
-  const save = () => {
-    localStorage.setItem("banker_home", JSON.stringify(config));
-    window.dispatchEvent(new Event("banker_home_updated"));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const save = async () => {
+    try {
+      await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "home", value: config }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      console.error("Failed to save home config:", e);
+    }
   };
 
   const updateBankingCard = (index: number, field: keyof HomeCard, value: any) => {

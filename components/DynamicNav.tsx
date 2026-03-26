@@ -22,11 +22,12 @@ export default function DynamicNav() {
   const [links, setLinks] = useState<NavLink[]>(defaultLinks);
   const pathname = usePathname();
 
-  const loadLinks = () => {
+  const loadLinks = async () => {
     try {
-      const stored = localStorage.getItem("banker_links");
-      if (stored) {
-        const parsed = JSON.parse(stored) as NavLink[];
+      const res = await fetch("/api/config?key=links");
+      const data = await res.json();
+      if (data.value && Array.isArray(data.value)) {
+        const parsed = data.value as NavLink[];
         setLinks(parsed.filter((l) => l.visible).sort((a, b) => a.order - b.order));
       }
     } catch {
@@ -36,18 +37,6 @@ export default function DynamicNav() {
 
   useEffect(() => {
     loadLinks();
-
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "banker_links") loadLinks();
-    };
-    const onCustom = () => loadLinks();
-
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("banker_links_updated", onCustom);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("banker_links_updated", onCustom);
-    };
   }, []);
 
   if (pathname?.startsWith("/admin")) return null;

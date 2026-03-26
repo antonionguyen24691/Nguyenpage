@@ -13,16 +13,22 @@ export default function GenericPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch page data from LocalStorage (Simulated Database)
-    const storedPages = localStorage.getItem("banker_pages");
-    if (storedPages) {
-      const pages = JSON.parse(storedPages);
-      const foundPage = pages.find((p: any) => p.slug === fullSlug || p.slug === slug);
-      if (foundPage && foundPage.status === "published") {
-        setPageData(foundPage);
+    const loadPage = async () => {
+      try {
+        const res = await fetch("/api/config?key=pages");
+        const data = await res.json();
+        if (data.value && Array.isArray(data.value)) {
+          const foundPage = data.value.find((p: any) => p.slug === fullSlug || p.slug === slug);
+          if (foundPage && foundPage.status === "published") {
+            setPageData(foundPage);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load page config:", e);
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+    loadPage();
   }, [fullSlug, slug]);
 
   if (loading) {
