@@ -39,51 +39,14 @@ CHUNK_SIZE = 500
 def fetch_all_nav() -> list[dict]:
     """Dùng vnstock gọi Fmarket API cho từng quỹ."""
     from vnstock.explorer.fmarket.fund import Fund
+    import time
 
     all_rows: list[dict] = []
     fund_client = Fund()
 
-    # DEBUG: List all available methods
-    methods = [m for m in dir(fund_client) if not m.startswith('_')]
-    print(f"🔍 DEBUG Fund methods: {methods}")
-
-    # Test with first fund to understand the data structure
-    test_code, test_id = list(FUNDS.items())[0]
-    print(f"\n🧪 DEBUG: Testing {test_code} (id={test_id})...")
-
-    # Try nav_report with positional arg
-    try:
-        df = fund_client.nav_report(test_id)
-        print(f"   nav_report(positional) type: {type(df)}")
-        if df is not None and hasattr(df, 'empty'):
-            print(f"   empty: {df.empty}, shape: {df.shape if not df.empty else 'N/A'}")
-            if not df.empty:
-                print(f"   columns: {list(df.columns)}")
-                print(f"   first row: {df.iloc[0].to_dict()}")
-        else:
-            print(f"   value: {df}")
-    except Exception as e:
-        print(f"   nav_report error: {e}")
-
-    # Try other possible methods
-    for method_name in ['nav_history', 'details', 'filter']:
-        if hasattr(fund_client, method_name):
-            print(f"\n🧪 DEBUG: Trying fund_client.{method_name}()...")
-            try:
-                result = getattr(fund_client, method_name)()
-                print(f"   type: {type(result)}")
-                if hasattr(result, 'shape'):
-                    print(f"   shape: {result.shape}")
-                    if not result.empty:
-                        print(f"   columns: {list(result.columns)}")
-            except Exception as e:
-                print(f"   error: {e}")
-
-    print("\n" + "="*60)
-    print("Starting actual crawl...")
-    print("="*60 + "\n")
-
-    for fund_code, product_id in FUNDS.items():
+    for i, (fund_code, product_id) in enumerate(FUNDS.items()):
+        if i > 0:
+            time.sleep(4)  # Rate limit: 20 req/min → 1 call per 4s = 15/min
         print(f"📊 Crawling {fund_code} (productId={product_id})...")
         try:
             df = fund_client.nav_report(product_id)
@@ -232,6 +195,11 @@ def main():
     nav_success = upsert_to_supabase(all_nav)
     print(f"✅ NAV: {nav_success}/{len(all_nav)} records synced.\n")
 
+    # Chờ giữa 2 pha để tránh rate limit
+    import time
+    print("⏳ Waiting 60s before Holdings phase (rate limit reset)...")
+    time.sleep(60)
+
     # === 2. Holdings Data ===
     print("=" * 50)
     print("📊 Crawling Holdings (top cổ phiếu nắm giữ)...")
@@ -250,6 +218,7 @@ def fetch_all_holdings() -> list[dict]:
     """Dùng vnstock top_holding() cho từng quỹ."""
     from vnstock.explorer.fmarket.fund import Fund
     from datetime import date
+    import time
 
     all_rows: list[dict] = []
     fund_client = Fund()
@@ -264,7 +233,9 @@ def fetch_all_holdings() -> list[dict]:
     report_date_str = report_date.strftime("%Y-%m-%d")
     print(f"📅 Report period: {report_date_str} (M-1)\n")
 
-    for fund_code, product_id in FUNDS.items():
+    for i, (fund_code, product_id) in enumerate(FUNDS.items()):
+        if i > 0:
+            time.sleep(4)  # Rate limit: 20 req/min
         print(f"📊 Holdings {fund_code} (productId={product_id})...")
         try:
             df = fund_client.top_holding(product_id)
