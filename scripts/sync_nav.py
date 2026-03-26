@@ -145,13 +145,49 @@ def fetch_all_nav() -> list[dict]:
     return all_rows
 
 
+# ─── Ensure funds exist in DB ─────────────────────────────────
+FUND_NAMES = {
+    "VESAF": ("Quỹ Đầu tư Cổ phiếu Hưng thịnh VinaCapital", "VinaCapital"),
+    "VEOF": ("Quỹ Đầu tư Cổ phiếu Tiếp cận Thị trường VinaCapital", "VinaCapital"),
+    "VLGF": ("Quỹ Đầu tư Cổ phiếu Tập trung Cổ tức VinaCapital", "VinaCapital"),
+    "VFF": ("Quỹ Đầu tư Trái phiếu Bảo Thịnh VinaCapital", "VinaCapital"),
+    "VIBF": ("Quỹ Đầu tư Cân bằng Tuệ sáng VinaCapital", "VinaCapital"),
+    "DCIP": ("Quỹ Đầu tư Thu nhập Cố định Dragon Capital", "DragonCapital"),
+    "DCBF": ("Quỹ Đầu tư Trái phiếu Dragon Capital", "DragonCapital"),
+    "DCDS": ("Quỹ Đầu tư Cổ phiếu Tăng trưởng Dragon Capital", "DragonCapital"),
+    "SSIBF": ("Quỹ Đầu tư Trái phiếu SSI", "SSIAM"),
+    "SSISCA": ("Quỹ Đầu tư Cổ phiếu Trưởng thành SSI", "SSIAM"),
+}
+
+def ensure_funds_exist():
+    """Auto-insert missing fund codes into funds table."""
+    url = f"{SUPABASE_URL}/rest/v1/funds"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates",
+    }
+    funds_data = [
+        {"code": code, "name": name, "company": company}
+        for code, (name, company) in FUND_NAMES.items()
+    ]
+    resp = http_requests.post(
+        f"{url}?on_conflict=code", headers=headers, json=funds_data, timeout=15
+    )
+    if resp.status_code in (200, 201):
+        print(f"✅ Ensured {len(funds_data)} fund codes exist in DB")
+    else:
+        print(f"⚠️  Fund insert: {resp.status_code} — {resp.text[:200]}")
+
+
 # ─── Supabase Upsert ──────────────────────────────────────────
 def upsert_to_supabase(records: list[dict]) -> int:
     """Bulk upsert vào bảng fund_nav qua Supabase REST API."""
     if not records:
         return 0
 
-    url = f"{SUPABASE_URL}/rest/v1/fund_nav"
+    url = f"{SUPABASE_URL}/rest/v1/fund_nav?on_conflict=fund_code,date"
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
@@ -188,6 +224,11 @@ def main():
     all_records = fetch_all_nav()
 
     print(f"\n📦 Total crawled: {len(all_records)} records")
+    
+    # Đảm bảo tất cả fund codes tồn tại trong bảng funds trước khi upsert NAV
+    print("🔧 Ensuring fund codes exist in DB...")
+    ensure_funds_exist()
+
     print("📤 Upserting to Supabase...")
 
     success = upsert_to_supabase(all_records)
