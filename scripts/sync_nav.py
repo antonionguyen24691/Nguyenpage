@@ -46,7 +46,7 @@ def fetch_all_nav() -> list[dict]:
     for fund_code, product_id in FUNDS.items():
         print(f"📊 Crawling {fund_code} (productId={product_id})...")
         try:
-            df = fund_client.nav_report(fund_id=product_id)
+            df = fund_client.nav_report(fundId=product_id)
 
             if df is None or df.empty:
                 print(f"  ⚠️  {fund_code}: no data returned")
