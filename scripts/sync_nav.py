@@ -43,39 +43,94 @@ def fetch_all_nav() -> list[dict]:
     all_rows: list[dict] = []
     fund_client = Fund()
 
+    # DEBUG: List all available methods
+    methods = [m for m in dir(fund_client) if not m.startswith('_')]
+    print(f"🔍 DEBUG Fund methods: {methods}")
+
+    # Test with first fund to understand the data structure
+    test_code, test_id = list(FUNDS.items())[0]
+    print(f"\n🧪 DEBUG: Testing {test_code} (id={test_id})...")
+
+    # Try nav_report with positional arg
+    try:
+        df = fund_client.nav_report(test_id)
+        print(f"   nav_report(positional) type: {type(df)}")
+        if df is not None and hasattr(df, 'empty'):
+            print(f"   empty: {df.empty}, shape: {df.shape if not df.empty else 'N/A'}")
+            if not df.empty:
+                print(f"   columns: {list(df.columns)}")
+                print(f"   first row: {df.iloc[0].to_dict()}")
+        else:
+            print(f"   value: {df}")
+    except Exception as e:
+        print(f"   nav_report error: {e}")
+
+    # Try other possible methods
+    for method_name in ['nav_history', 'details', 'filter']:
+        if hasattr(fund_client, method_name):
+            print(f"\n🧪 DEBUG: Trying fund_client.{method_name}()...")
+            try:
+                result = getattr(fund_client, method_name)()
+                print(f"   type: {type(result)}")
+                if hasattr(result, 'shape'):
+                    print(f"   shape: {result.shape}")
+                    if not result.empty:
+                        print(f"   columns: {list(result.columns)}")
+            except Exception as e:
+                print(f"   error: {e}")
+
+    print("\n" + "="*60)
+    print("Starting actual crawl...")
+    print("="*60 + "\n")
+
     for fund_code, product_id in FUNDS.items():
         print(f"📊 Crawling {fund_code} (productId={product_id})...")
         try:
-            df = fund_client.nav_report(fundId=product_id)
+            df = fund_client.nav_report(product_id)
 
-            if df is None or df.empty:
-                print(f"  ⚠️  {fund_code}: no data returned")
+            if df is None:
+                print(f"  ⚠️  {fund_code}: None returned")
                 continue
+            
+            if hasattr(df, 'empty') and df.empty:
+                print(f"  ⚠️  {fund_code}: empty DataFrame")
+                continue
+
+            if not hasattr(df, 'iterrows'):
+                print(f"  ⚠️  {fund_code}: not a DataFrame, type={type(df)}")
+                continue
+
+            print(f"  DEBUG columns: {list(df.columns)}, rows: {len(df)}")
 
             records_count = 0
             for _, row in df.iterrows():
                 nav_date = None
                 nav_val = None
 
-                # Tìm cột ngày (có thể là navDate hoặc tên khác)
-                for col in ["navDate", "date", "nav_date"]:
-                    if col in df.columns:
+                # Auto-detect date column
+                for col in df.columns:
+                    col_lower = str(col).lower()
+                    if 'date' in col_lower or 'ngay' in col_lower:
                         nav_date = str(row[col])
                         break
 
-                # Tìm cột giá (có thể là nav hoặc tên khác)
-                for col in ["nav", "NAV", "navPerUnit"]:
-                    if col in df.columns:
+                # Auto-detect NAV column
+                for col in df.columns:
+                    col_lower = str(col).lower()
+                    if 'nav' in col_lower and 'date' not in col_lower:
                         nav_val = row[col]
                         break
 
                 if not nav_date or nav_val is None:
                     continue
 
+                # Clean date format
+                date_str = str(nav_date).split(' ')[0].split('T')[0]
+
                 all_rows.append({
                     "fund_code": fund_code,
                     "nav": float(nav_val),
-                    "date": nav_date,
+                    "date": date_str,
                     "source": "Fmarket",
                 })
                 records_count += 1
