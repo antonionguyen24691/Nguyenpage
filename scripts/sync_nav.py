@@ -1,6 +1,6 @@
 """
-sync_nav.py — Crawl NAV lịch sử từ Fmarket API và đẩy vào Supabase.
-Chạy bởi GitHub Actions hàng ngày hoặc bằng tay.
+sync_nav.py — Crawl NAV lịch sử từ Fmarket thông qua thư viện vnstock
+và đẩy vào Supabase. Chạy bởi GitHub Actions hàng ngày hoặc bằng tay.
 
 Usage:
   python scripts/sync_nav.py
@@ -11,34 +11,12 @@ Env vars needed:
 
 import os
 import sys
-import json
-import requests
-from datetime import datetime
+import requests as http_requests
+from datetime import datetime, timezone
 
 # ─── Config ────────────────────────────────────────────────────
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip('"')
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip('"')
-
-FMARKET_NAV_URL = "https://api.fmarket.vn/res/product/get-nav-history"
-
-# Headers giống hệt vnstock (bắt buộc để bypass WAF của Fmarket)
-FMARKET_HEADERS = {
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "en-US,en;q=0.9,vi-VN;q=0.8,vi;q=0.7",
-    "Connection": "keep-alive",
-    "Content-Type": "application/json",
-    "Cache-Control": "no-cache",
-    "DNT": "1",
-    "Pragma": "no-cache",
-    "Referer": "https://fmarket.vn/",
-    "Origin": "https://fmarket.vn",
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "same-site",
-    "sec-ch-ua-platform": '"Windows"',
-    "sec-ch-ua-mobile": "?0",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-}
 
 # Mapping: fund_code -> fmarket productId
 FUNDS = {
@@ -56,52 +34,60 @@ FUNDS = {
 
 CHUNK_SIZE = 500
 
-# ─── Fmarket Crawl ─────────────────────────────────────────────
-def fetch_nav_history(fund_code: str, product_id: int) -> list[dict]:
-    """Gọi Fmarket API lấy toàn bộ lịch sử NAV của 1 quỹ."""
-    current_date = datetime.now().strftime("%Y%m%d")
-    try:
-        resp = requests.post(
-            FMARKET_NAV_URL,
-            json={
-                "isAllData": 1,
-                "productId": product_id,
-                "fromDate": None,
-                "toDate": current_date,
-            },
-            headers=FMARKET_HEADERS,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
 
-        if not isinstance(data.get("data"), list):
-            print(f"  ⚠️  {fund_code}: unexpected response shape")
-            return []
+# ─── Crawl via vnstock ─────────────────────────────────────────
+def fetch_all_nav() -> list[dict]:
+    """Dùng vnstock gọi Fmarket API cho từng quỹ."""
+    from vnstock.explorer.fmarket.fund import Fund
 
-        rows = []
-        for item in data["data"]:
-            nav_date = item.get("navDate", "")
-            nav_val = item.get("nav")
-            if not nav_date or nav_val is None:
+    all_rows: list[dict] = []
+    fund_client = Fund()
+
+    for fund_code, product_id in FUNDS.items():
+        print(f"📊 Crawling {fund_code} (productId={product_id})...")
+        try:
+            df = fund_client.nav_report(fund_id=product_id)
+
+            if df is None or df.empty:
+                print(f"  ⚠️  {fund_code}: no data returned")
                 continue
 
-            # navDate có thể là string "YYYY-MM-DD" hoặc timestamp
-            if isinstance(nav_date, (int, float)):
-                nav_date = datetime.utcfromtimestamp(nav_date / 1000).strftime("%Y-%m-%d")
+            records_count = 0
+            for _, row in df.iterrows():
+                nav_date = None
+                nav_val = None
 
-            rows.append({
-                "fund_code": fund_code,
-                "nav": float(nav_val),
-                "date": str(nav_date),
-                "source": "Fmarket",
-            })
+                # Tìm cột ngày (có thể là navDate hoặc tên khác)
+                for col in ["navDate", "date", "nav_date"]:
+                    if col in df.columns:
+                        nav_date = str(row[col])
+                        break
 
-        return rows
+                # Tìm cột giá (có thể là nav hoặc tên khác)
+                for col in ["nav", "NAV", "navPerUnit"]:
+                    if col in df.columns:
+                        nav_val = row[col]
+                        break
 
-    except Exception as exc:
-        print(f"  ❌ {fund_code}: fetch failed — {exc}")
-        return []
+                if not nav_date or nav_val is None:
+                    continue
+
+                all_rows.append({
+                    "fund_code": fund_code,
+                    "nav": float(nav_val),
+                    "date": nav_date,
+                    "source": "Fmarket",
+                })
+                records_count += 1
+
+            print(f"  → {records_count} records")
+
+        except Exception as exc:
+            print(f"  ❌ {fund_code}: failed — {exc}")
+            import traceback
+            traceback.print_exc()
+
+    return all_rows
 
 
 # ─── Supabase Upsert ──────────────────────────────────────────
@@ -122,7 +108,7 @@ def upsert_to_supabase(records: list[dict]) -> int:
     for i in range(0, len(records), CHUNK_SIZE):
         chunk = records[i : i + CHUNK_SIZE]
         try:
-            resp = requests.post(url, headers=headers, json=chunk, timeout=30)
+            resp = http_requests.post(url, headers=headers, json=chunk, timeout=30)
             if resp.status_code in (200, 201):
                 success += len(chunk)
                 print(f"  ✅ Upserted chunk {i // CHUNK_SIZE + 1} ({len(chunk)} records)")
@@ -140,17 +126,11 @@ def main():
         print("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars")
         sys.exit(1)
 
-    print(f"🚀 NAV Sync started at {datetime.now().isoformat()}Z")
+    print(f"🚀 NAV Sync started at {datetime.now(timezone.utc).isoformat()}")
     print(f"   Supabase: {SUPABASE_URL}")
     print(f"   Funds: {len(FUNDS)}\n")
 
-    all_records: list[dict] = []
-
-    for fund_code, product_id in FUNDS.items():
-        print(f"📊 Crawling {fund_code} (productId={product_id})...")
-        rows = fetch_nav_history(fund_code, product_id)
-        print(f"   → {len(rows)} records")
-        all_records.extend(rows)
+    all_records = fetch_all_nav()
 
     print(f"\n📦 Total crawled: {len(all_records)} records")
     print("📤 Upserting to Supabase...")
