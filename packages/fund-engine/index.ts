@@ -7,25 +7,25 @@ export async function syncFunds() {
 
   let successCount = 0;
 
-  for (const item of data) {
-    // Dùng Supabase client insert, upsert nếu bị trùng ngày
+  // Bulk upsert chunks of 500 to avoid payload size errors
+  const chunkSize = 500;
+  for (let i = 0; i < data.length; i += chunkSize) {
+    const chunk = data.slice(i, i + chunkSize).map(item => ({
+      fund_code: item.fund,
+      nav: item.nav,
+      date: item.date,
+      source: item.source
+    }));
+
     const { error } = await db
       .from('fund_nav')
-      .upsert(
-        {
-          fund_code: item.fund,
-          nav: item.nav,
-          date: item.date,
-          source: item.source
-        },
-        { onConflict: 'fund_code,date', ignoreDuplicates: false }
-      );
+      .upsert(chunk, { onConflict: 'fund_code,date', ignoreDuplicates: false });
 
     if (error) {
-      console.error(`Failed to sync ${item.fund}:`, error.message);
+      console.error(`Failed to sync chunk starting at index ${i}:`, error.message);
     } else {
-      successCount++;
-      console.log(`Synced ${item.fund} on ${item.date} with NAV = ${item.nav}`);
+      successCount += chunk.length;
+      console.log(`Synced ${chunk.length} entries for chunk ${i / chunkSize + 1}`);
     }
   }
 

@@ -17,6 +17,7 @@ export default function AdminDashboard() {
 
   const [activeTab, setActiveTab] = useState("pages");
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const [pages, setPages] = useState<any[]>([]);
   const [links, setLinks] = useState<any[]>([]);
@@ -127,6 +128,24 @@ export default function AdminDashboard() {
 
   // Manage Modals
   const [isPageModalOpen, setIsPageModalOpen] = useState(false);
+  
+  const handleSyncFunds = async () => {
+    try {
+      if (!confirm("Tiến trình đồng bộ sẽ quét tất cả các Quỹ, việc này mất một ít thời gian. Bạn có chắc chắn bắt đầu không?")) return;
+      setIsSyncing(true);
+      const res = await fetch("/api/cron/fund-sync");
+      const data = await res.json();
+      if (data.success) {
+        alert("Đồng bộ dữ liệu quỹ hoàn tất: " + data.data.successCount + " bản ghi thành công.");
+      } else {
+        alert("Có lỗi: " + data.message);
+      }
+    } catch (e) {
+      alert("Lỗi kết nối khi đồng bộ!");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [editingId, setEditingId] = useState<number | string | null>(null);
@@ -502,13 +521,27 @@ export default function AdminDashboard() {
                   <h1 className="font-headline font-bold text-3xl text-on-surface">Cài đặt Hệ thống & Tích hợp</h1>
                   <p className="text-on-surface-variant text-sm mt-2">Cấu hình kết nối API Chatbot AI và CRM qua Google Sheets.</p>
                 </div>
-                <button 
-                  onClick={() => alert("Đã lưu cấu hình hệ thống thành công!")}
-                  className="bg-primary text-white px-6 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#004d45] transition-all shadow-md active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[20px]">save</span>
-                  Lưu Cấu hình
-                </button>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={handleSyncFunds}
+                    disabled={isSyncing}
+                    className="bg-indigo-600 text-white px-6 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-md active:scale-95 disabled:opacity-50"
+                  >
+                    {isSyncing ? (
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    ) : (
+                      <span className="material-symbols-outlined text-[20px]">sync</span>
+                    )}
+                    {isSyncing ? 'Đang chạy...' : 'Crawl/Sync NAV Quỹ'}
+                  </button>
+                  <button 
+                    onClick={() => alert("Đã lưu cấu hình hệ thống thành công!")}
+                    className="bg-primary text-white px-6 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#004d45] transition-all shadow-md active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">save</span>
+                    Lưu Cấu hình
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

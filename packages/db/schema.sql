@@ -37,9 +37,14 @@ VALUES
   ('VESAF', 'Quỹ Đầu tư Cổ phiếu Hưng thịnh VinaCapital', 'VinaCapital'),
   ('VEOF', 'Quỹ Đầu tư Cổ phiếu Tiếp cận Thị trường VinaCapital', 'VinaCapital'),
   ('VLGF', 'Quỹ Đầu tư Cổ phiếu Tập trung Cổ tức VinaCapital', 'VinaCapital'),
+  ('VFF', 'Quỹ Đầu tư Trái phiếu Bảo Thịnh VinaCapital', 'VinaCapital'),
+  ('VIBF', 'Quỹ Đầu tư Cân bằng Tuệ sáng VinaCapital', 'VinaCapital'),
   ('SSISCA', 'Quỹ Đầu tư Cổ phiếu Trưởng thành SSI', 'SSIAM'),
+  ('SSIBF', 'Quỹ Đầu tư Trái phiếu SSI', 'SSIAM'),
   ('DCBC', 'Quỹ Đầu tư Cổ phiếu Năng động Dragon Capital', 'DragonCapital'),
-  ('DCDS', 'Quỹ Đầu tư Cổ phiếu Tăng trưởng Dragon Capital', 'DragonCapital')
+  ('DCDS', 'Quỹ Đầu tư Cổ phiếu Tăng trưởng Dragon Capital', 'DragonCapital'),
+  ('DCIP', 'Quỹ Đầu tư Thu nhập Cố định Dragon Capital', 'DragonCapital'),
+  ('DCBF', 'Quỹ Đầu tư Trái phiếu Dragon Capital', 'DragonCapital')
 ON CONFLICT (code) DO NOTHING;
 
 -- Bật Row Level Security (RLS) để bảo mật
