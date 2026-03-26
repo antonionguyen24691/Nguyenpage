@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import DynamicNav from "@/components/DynamicNav";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({
   variable: "--font-body",
@@ -58,6 +59,7 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+        <Analytics />
       </body>
     </html>
   );
