@@ -221,19 +221,134 @@ def main():
     print(f"   Supabase: {SUPABASE_URL}")
     print(f"   Funds: {len(FUNDS)}\n")
 
-    all_records = fetch_all_nav()
-
-    print(f"\n📦 Total crawled: {len(all_records)} records")
-    
-    # Đảm bảo tất cả fund codes tồn tại trong bảng funds trước khi upsert NAV
+    # Đảm bảo tất cả fund codes tồn tại trong bảng funds
     print("🔧 Ensuring fund codes exist in DB...")
     ensure_funds_exist()
 
-    print("📤 Upserting to Supabase...")
+    # === 1. NAV Data ===
+    all_nav = fetch_all_nav()
+    print(f"\n📦 Total NAV crawled: {len(all_nav)} records")
+    print("📤 Upserting NAV to Supabase...")
+    nav_success = upsert_to_supabase(all_nav)
+    print(f"✅ NAV: {nav_success}/{len(all_nav)} records synced.\n")
 
-    success = upsert_to_supabase(all_records)
+    # === 2. Holdings Data ===
+    print("=" * 50)
+    print("📊 Crawling Holdings (top cổ phiếu nắm giữ)...")
+    print("=" * 50 + "\n")
+    all_holdings = fetch_all_holdings()
+    print(f"\n📦 Total Holdings crawled: {len(all_holdings)} records")
+    print("📤 Upserting Holdings to Supabase...")
+    holdings_success = upsert_holdings_to_supabase(all_holdings)
+    print(f"✅ Holdings: {holdings_success}/{len(all_holdings)} records synced.")
 
-    print(f"\n✅ Done! {success}/{len(all_records)} records synced successfully.")
+    print(f"\n🎉 All done! NAV={nav_success}, Holdings={holdings_success}")
+
+
+# ─── Crawl Holdings via vnstock ───────────────────────────────
+def fetch_all_holdings() -> list[dict]:
+    """Dùng vnstock top_holding() cho từng quỹ."""
+    from vnstock.explorer.fmarket.fund import Fund
+    from datetime import date
+
+    all_rows: list[dict] = []
+    fund_client = Fund()
+    
+    # Ngày báo cáo = tháng trước (M-1)
+    today = date.today()
+    if today.month == 1:
+        report_date = date(today.year - 1, 12, 1)
+    else:
+        report_date = date(today.year, today.month - 1, 1)
+    
+    report_date_str = report_date.strftime("%Y-%m-%d")
+    print(f"📅 Report period: {report_date_str} (M-1)\n")
+
+    for fund_code, product_id in FUNDS.items():
+        print(f"📊 Holdings {fund_code} (productId={product_id})...")
+        try:
+            df = fund_client.top_holding(product_id)
+
+            if df is None or (hasattr(df, 'empty') and df.empty):
+                print(f"  ⚠️  {fund_code}: no holdings data")
+                continue
+
+            print(f"  columns: {list(df.columns)}, rows: {len(df)}")
+
+            records_count = 0
+            for _, row in df.iterrows():
+                # Auto-detect stock code column
+                stock_code = None
+                for col in df.columns:
+                    col_lower = str(col).lower()
+                    if 'stock' in col_lower or 'code' in col_lower or 'ticker' in col_lower or 'symbol' in col_lower:
+                        stock_code = str(row[col])
+                        break
+                
+                if not stock_code:
+                    # Fallback: use first column that looks like a stock code
+                    for col in df.columns:
+                        val = str(row[col])
+                        if val.isalpha() and len(val) <= 5 and val.isupper():
+                            stock_code = val
+                            break
+                
+                # Auto-detect weight/ratio column
+                weight = None
+                for col in df.columns:
+                    col_lower = str(col).lower()
+                    if 'weight' in col_lower or 'ratio' in col_lower or 'percent' in col_lower or '%' in col_lower or 'net_asset' in col_lower:
+                        weight = row[col]
+                        break
+
+                if not stock_code or weight is None:
+                    continue
+
+                all_rows.append({
+                    "fund_code": fund_code,
+                    "stock_code": stock_code,
+                    "weight": float(weight),
+                    "date": report_date_str,
+                })
+                records_count += 1
+
+            print(f"  → {records_count} holdings")
+
+        except Exception as exc:
+            print(f"  ❌ {fund_code}: failed — {exc}")
+            import traceback
+            traceback.print_exc()
+
+    return all_rows
+
+
+def upsert_holdings_to_supabase(records: list[dict]) -> int:
+    """Upsert vào bảng fund_holdings."""
+    if not records:
+        return 0
+
+    url = f"{SUPABASE_URL}/rest/v1/fund_holdings?on_conflict=fund_code,stock_code,date"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates",
+    }
+
+    success = 0
+    for i in range(0, len(records), CHUNK_SIZE):
+        chunk = records[i : i + CHUNK_SIZE]
+        try:
+            resp = http_requests.post(url, headers=headers, json=chunk, timeout=30)
+            if resp.status_code in (200, 201):
+                success += len(chunk)
+                print(f"  ✅ Holdings chunk {i // CHUNK_SIZE + 1} ({len(chunk)} records)")
+            else:
+                print(f"  ❌ Holdings chunk {i // CHUNK_SIZE + 1}: {resp.status_code} — {resp.text[:200]}")
+        except Exception as exc:
+            print(f"  ❌ Holdings chunk {i // CHUNK_SIZE + 1} error: {exc}")
+
+    return success
 
 
 if __name__ == "__main__":
