@@ -21,6 +21,25 @@ SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip('"')
 
 FMARKET_NAV_URL = "https://api.fmarket.vn/res/product/get-nav-history"
 
+# Headers giống hệt vnstock (bắt buộc để bypass WAF của Fmarket)
+FMARKET_HEADERS = {
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9,vi-VN;q=0.8,vi;q=0.7",
+    "Connection": "keep-alive",
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "DNT": "1",
+    "Pragma": "no-cache",
+    "Referer": "https://fmarket.vn/",
+    "Origin": "https://fmarket.vn",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-site",
+    "sec-ch-ua-platform": '"Windows"',
+    "sec-ch-ua-mobile": "?0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+}
+
 # Mapping: fund_code -> fmarket productId
 FUNDS = {
     "VESAF": 23,
@@ -40,20 +59,17 @@ CHUNK_SIZE = 500
 # ─── Fmarket Crawl ─────────────────────────────────────────────
 def fetch_nav_history(fund_code: str, product_id: int) -> list[dict]:
     """Gọi Fmarket API lấy toàn bộ lịch sử NAV của 1 quỹ."""
+    current_date = datetime.now().strftime("%Y%m%d")
     try:
         resp = requests.post(
             FMARKET_NAV_URL,
             json={
                 "isAllData": 1,
                 "productId": product_id,
-                "searchField": "",
-                "sortBy": "",
-                "sortOrder": "",
+                "fromDate": None,
+                "toDate": current_date,
             },
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            },
+            headers=FMARKET_HEADERS,
             timeout=30,
         )
         resp.raise_for_status()
@@ -77,7 +93,7 @@ def fetch_nav_history(fund_code: str, product_id: int) -> list[dict]:
             rows.append({
                 "fund_code": fund_code,
                 "nav": float(nav_val),
-                "date": nav_date,
+                "date": str(nav_date),
                 "source": "Fmarket",
             })
 
@@ -124,7 +140,7 @@ def main():
         print("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars")
         sys.exit(1)
 
-    print(f"🚀 NAV Sync started at {datetime.utcnow().isoformat()}Z")
+    print(f"🚀 NAV Sync started at {datetime.now().isoformat()}Z")
     print(f"   Supabase: {SUPABASE_URL}")
     print(f"   Funds: {len(FUNDS)}\n")
 
