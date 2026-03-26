@@ -1,4 +1,4 @@
-async function test() {
+async function debugTest() {
   console.log("VC Fetching...");
   try {
     const vcReq = await fetch('https://vinacapital.com/wp-admin/admin-ajax.php', {
@@ -36,4 +36,5 @@ async function test() {
     console.log("FM Data:", fmText.substring(0, 100));
   } catch(e) { console.error(e); }
 }
-test();
+debugTest();
+

@@ -1,6 +1,6 @@
 import { crawlVinaCapital, crawlDragonCapital, crawlSSIAM } from '../packages/fund-engine/crawler';
 
-async function test() {
+async function testCrawl() {
   console.log("Testing VinaCapital...");
   const vc = await crawlVinaCapital('VESAF');
   console.log("VC Length:", vc.length);
@@ -10,4 +10,4 @@ async function test() {
   console.log("DC Length:", dc.length);
 }
 
-test().catch(e => console.error("FATAL", e));
+testCrawl().catch(e => console.error("FATAL", e));
