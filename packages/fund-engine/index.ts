@@ -4,6 +4,7 @@ import { db } from '../db';
 export async function syncFunds() {
   console.log('Starting fund sync at', new Date().toISOString());
   const data = await crawlAllFunds();
+  console.log('Total crawled records:', data.length);
 
   let successCount = 0;
 

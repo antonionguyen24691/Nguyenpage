@@ -17,6 +17,7 @@ export async function crawlVinaCapital(fundName: string): Promise<FundData[]> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },
       body: new URLSearchParams({
         action: 'getchartfundnav',
@@ -58,7 +59,10 @@ async function fetchFmarketNav(fundName: string, source: string): Promise<FundDa
   try {
     const res = await fetch('https://api.fmarket.vn/res/product/get-nav-history', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
       body: JSON.stringify({ 
         isAllData: 1, 
         productId: fundId,
@@ -68,7 +72,7 @@ async function fetchFmarketNav(fundName: string, source: string): Promise<FundDa
       })
     });
     const data = await res.json();
-    if (data && data.status === 200 && Array.isArray(data.data)) {
+    if (data && Array.isArray(data.data)) {
       return data.data.map((item: any) => {
         let dateVal = item.navDate;
         let formattedDate = new Date().toISOString().split('T')[0];
