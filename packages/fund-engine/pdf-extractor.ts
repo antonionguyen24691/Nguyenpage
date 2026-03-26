@@ -1,4 +1,4 @@
-import pdfParse from 'pdf-parse';
+// Dynamic import inside function instead
 import * as cheerio from 'cheerio';
 import { extractHoldingsFromText } from '../ai/holdings-extraction';
 import { db } from '../db';
@@ -48,6 +48,7 @@ export async function processFundHoldings(fundCode: string) {
     const buffer = Buffer.from(arrayBuffer);
 
     console.log(`Parsing PDF for ${fundCode}...`);
+    const pdfParse = require('pdf-parse');
     const pdfData = await pdfParse(buffer);
 
     console.log(`AI Extracting holdings for ${fundCode}...`);

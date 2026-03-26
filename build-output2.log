@@ -1,0 +1,42 @@
+
+> banker-system@0.1.0 build
+> next build
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\DELL\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\package-lock.json
+
+▲ Next.js 16.2.1 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 3.6s
+  Running TypeScript ...
+  Finished TypeScript in 3.6s ...
+  Collecting page data using 15 workers ...
+Warning: Cannot load "@napi-rs/canvas" package: "Error: Cannot find module '@napi-rs/canvas'
+Require stack:
+- C:\ROOT\OneDrive\Desktop\sang kein\LADING SALE\banker-system\node_modules\pdf-parse\dist\pdf-parse\cjs\index.cjs".
+Warning: Cannot polyfill `DOMMatrix`, rendering may be broken.
+Warning: Cannot polyfill `ImageData`, rendering may be broken.
+Warning: Cannot polyfill `Path2D`, rendering may be broken.
+ReferenceError: DOMMatrix is not defined
+    at module evaluation (C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\.next\server\chunks\[root-of-the-server]__13s5a6w._.js:121:118405)
+    at instantiateModule (C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\.next\server\chunks\[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\.next\server\chunks\[turbopack]_runtime.js:877:12)
+    at Context.commonJsRequire [as r] (C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\.next\server\chunks\[turbopack]_runtime.js:302:12)
+    at module evaluation (C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\.next\server\chunks\[root-of-the-server]__13s5a6w._.js:153:356)
+    at instantiateModule (C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\.next\server\chunks\[turbopack]_runtime.js:853:9)
+    at instantiateRuntimeModule (C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\.next\server\chunks\[turbopack]_runtime.js:882:12)
+    at getOrInstantiateRuntimeModule (C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\.next\server\chunks\[turbopack]_runtime.js:895:12)
+    at Object.m (C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\.next\server\chunks\[turbopack]_runtime.js:898:18)
+    at Object.<anonymous> (C:\Users\DELL\OneDrive\Desktop\sang kein\LADING SALE\banker-system\.next\server\app\api\cron\fund-holdings\route.js:7:3)
+
+> Build error occurred
+Error: Failed to collect page data for /api/cron/fund-holdings
+    at ignore-listed frames {
+  type: 'Error'
+}

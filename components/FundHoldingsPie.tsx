@@ -35,13 +35,13 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
             innerRadius={80}
             outerRadius={120}
             paddingAngle={2}
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
+            label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(1) : 0}%`}
           >
             {topData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip formatter={(value: number) => [`${Number(value).toFixed(2)}%`, 'Tỷ trọng']} />
+          <Tooltip formatter={(value: any) => [`${Number(value).toFixed(2)}%`, 'Tỷ trọng']} />
           <Legend />
         </PieChart>
       </ResponsiveContainer>
