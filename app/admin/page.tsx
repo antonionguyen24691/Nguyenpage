@@ -148,7 +148,7 @@ export default function AdminDashboard() {
       } else {
         alert("Có lỗi: " + data.message);
       }
-    } catch (e) {
+    } catch {
       alert("Lỗi kết nối khi đồng bộ!");
     } finally {
       setIsSyncing(false);
@@ -459,7 +459,7 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                   {pages.length === 0 && (
-                     <div className="p-12 text-center text-on-surface-variant font-medium">Chưa có trang nào. Nhấn "Tạo Trang Mới" để bắt đầu.</div>
+                     <div className="p-12 text-center text-on-surface-variant font-medium">Chưa có trang nào. Nhấn &quot;Tạo Trang Mới&quot; để bắt đầu.</div>
                   )}
                 </div>
               </div>
@@ -715,7 +715,7 @@ export default function AdminDashboard() {
                  </div>
 
                  {/* Render Blocks */}
-                 {formData.blocks && formData.blocks.map((block: any, index: number) => (
+                 {formData.blocks && formData.blocks.map((block: any) => (
                    <div key={block.id} className="group relative bg-white border outline-transparent focus-within:outline-primary/50 focus-within:border-primary rounded-2xl shadow-sm transition-all p-4 px-6 md:px-12">
                      {/* Delete Block */}
                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">

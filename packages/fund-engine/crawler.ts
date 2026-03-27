@@ -1,5 +1,3 @@
-import * as cheerio from 'cheerio';
-
 type FundData = {
   fund: string;
   nav: number;
@@ -74,7 +72,7 @@ async function fetchFmarketNav(fundName: string, source: string): Promise<FundDa
     const data = await res.json();
     if (data && Array.isArray(data.data)) {
       return data.data.map((item: any) => {
-        let dateVal = item.navDate;
+        const dateVal = item.navDate;
         let formattedDate = new Date().toISOString().split('T')[0];
         
         if (dateVal) {

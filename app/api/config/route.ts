@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/packages/db";
 
+// Buộc Vercel luôn chạy serverless function, không cache ở CDN edge
+export const dynamic = "force-dynamic";
+
+const noCacheHeaders = { "Cache-Control": "no-store, max-age=0" };
+
 // GET /api/config?key=pages  (hoặc key=links,settings,home)
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,13 +17,13 @@ export async function GET(request: Request) {
       .from("site_config")
       .select("config_key, config_value");
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: noCacheHeaders });
 
     const result: Record<string, any> = {};
     for (const row of data || []) {
       result[row.config_key] = row.config_value;
     }
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: noCacheHeaders });
   }
 
   const { data, error } = await db
@@ -28,10 +33,10 @@ export async function GET(request: Request) {
     .single();
 
   if (error && error.code !== "PGRST116") {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500, headers: noCacheHeaders });
   }
 
-  return NextResponse.json({ value: data?.config_value || null });
+  return NextResponse.json({ value: data?.config_value || null }, { headers: noCacheHeaders });
 }
 
 // POST /api/config  body: { key: "pages", value: [...] }

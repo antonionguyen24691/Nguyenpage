@@ -5,7 +5,7 @@ import Chatbot from "@/components/Chatbot";
 
 export default function DangKyPage() {
   const [step, setStep] = useState(1);
-  const [data, setData] = useState<any>({});
+  const [data, setData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +41,7 @@ export default function DangKyPage() {
       });
       setDone(true);
       setStep(4);
-    } catch (e) {
+    } catch {
       alert("Có lỗi xảy ra");
     }
     setLoading(false);
@@ -261,7 +261,7 @@ export default function DangKyPage() {
                         )}
                       </div>
                       <label htmlFor="agree-terms" className="ml-2 block text-sm text-on-surface-variant">
-                        Bằng việc nhấn "Gửi yêu cầu", bạn đồng ý với Điều khoản và Chính sách bảo mật của Nguyen Page.
+                        Bằng việc nhấn &quot;Gửi yêu cầu&quot;, bạn đồng ý với Điều khoản và Chính sách bảo mật của Nguyen Page.
                       </label>
                     </div>
                   )}

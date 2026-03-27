@@ -4,10 +4,9 @@ import { syncFunds } from '../../../../packages/fund-engine';
 // Ngăn Next.js build route này dưới dạng static
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     // Bảo mật: Đảm bảo chỉ Vercel Cron mới gọi được API này (bạn cần cấu hình CRON_SECRET trong env trên Vercel)
-    const authHeader = request.headers.get('authorization');
     // Tạm tắt Auth để test local dễ dàng. Trong Production nên bật đoạn code dưới lên:
     /*
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

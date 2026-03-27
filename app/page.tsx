@@ -1,30 +1,34 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import { db } from "@/packages/db";
+import { defaultHomeConfig, type HomeConfig } from "@/lib/homeConfig";
 import Chatbot from "@/components/Chatbot";
 import Link from "next/link";
-import { defaultHomeConfig, type HomeConfig } from "@/lib/homeConfig";
 
-export default function Home() {
-  const [config, setConfig] = useState<HomeConfig>(defaultHomeConfig);
+// Luôn fetch data mới nhất từ Supabase (không cache)
+export const dynamic = "force-dynamic";
 
-  const loadConfig = async () => {
-    try {
-      const res = await fetch("/api/config?key=home");
-      const data = await res.json();
-      if (data.value) {
-        setConfig({ ...defaultHomeConfig, ...data.value });
-      }
-    } catch {
-      // fallback to defaults
+async function getHomeConfig(): Promise<HomeConfig> {
+  try {
+    const { data, error } = await db
+      .from("site_config")
+      .select("config_value")
+      .eq("config_key", "home")
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      console.error("Failed to load home config:", error.message);
     }
-  };
 
-  useEffect(() => {
-    loadConfig();
-  }, []);
+    if (data?.config_value) {
+      return { ...defaultHomeConfig, ...data.config_value };
+    }
+  } catch (e) {
+    console.error("Failed to load home config:", e);
+  }
+  return defaultHomeConfig;
+}
 
-  const c = config;
+export default async function Home() {
+  const c = await getHomeConfig();
 
   return (
     <>

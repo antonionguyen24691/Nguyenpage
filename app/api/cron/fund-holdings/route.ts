@@ -3,7 +3,7 @@ import { syncAllHoldings } from '../../../../packages/fund-engine/pdf-extractor'
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     // LƯU Ý: Ở môi trường thật, nhớ bảo mật endpoint này (ví dụ check Header Authorization == process.env.CRON_SECRET)
     const result = await syncAllHoldings();

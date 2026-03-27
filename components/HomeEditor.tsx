@@ -103,7 +103,7 @@ export default function HomeEditor() {
               <input className={inputCls} value={config.bankingTitle} onChange={(e) => setConfig({ ...config, bankingTitle: e.target.value })} />
             </div>
             <div>
-              <label className={labelCls}>Link "Xem tất cả"</label>
+              <label className={labelCls}>Link &quot;Xem tất cả&quot;</label>
               <input className={`${inputCls} font-mono`} value={config.bankingViewAllUrl} onChange={(e) => setConfig({ ...config, bankingViewAllUrl: e.target.value })} />
             </div>
           </div>

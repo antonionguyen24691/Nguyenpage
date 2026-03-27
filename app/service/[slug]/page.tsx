@@ -1,4 +1,5 @@
 import { getPage } from "@/lib/sheet";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 interface PageProps {
@@ -20,9 +21,9 @@ export default async function ServicePage({ params }: PageProps) {
       {/* Nav */}
       <nav className="glass sticky top-0 z-40 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <a href="/" className="text-lg font-bold gradient-text hover:opacity-80 transition-opacity">
+          <Link href="/" className="text-lg font-bold gradient-text hover:opacity-80 transition-opacity">
             ← Banker System
-          </a>
+          </Link>
         </div>
       </nav>
 
