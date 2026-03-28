@@ -1,33 +1,75 @@
-/**
- * AI phân tích quỹ nội bộ bằng logic hoặc tích hợp Open AI.
- */
-export async function analyzeFund(fundData: any[]) {
-    if (!fundData || fundData.length < 2) {
-      return "Chưa có đủ dữ liệu lịch sử để phân tích.";
-    }
-  
-    // Sắp xếp mốc thời gian gần nhất lên đầu (nếu đầu vào chưa sort)
-    // fundData = fundData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+import OpenAI from "openai";
 
-    const latest = fundData[0].nav;
-    const previous = fundData[1].nav;
-    const change = latest - previous;
-    const changePercent = ((change / previous) * 100).toFixed(2);
-  
-    // Nếu có dữ liệu 7 ngày, thêm tính toán
-    const weekOld = fundData.length >= 7 ? fundData[6].nav : null;
-    let weekInsight = '';
-    if (weekOld) {
-        const weekChange = latest - weekOld;
-        const weekChangePercent = ((weekChange / weekOld) * 100).toFixed(2);
-        weekInsight = `So với tuần trước, NAV ${weekChange > 0 ? 'tăng' : 'giảm'} ${Math.abs(Number(weekChangePercent))}%. `;
-    }
+interface AnalyzeHolding {
+  stock_code: string;
+  weight: number;
+}
 
-    if (change > 0) {
-      return `Quỹ đang có dấu hiệu tăng trưởng ngắn hạn (+${changePercent}% so với phiên liền trước). ${weekInsight}`;
-    } else if (change < 0) {
-      return `Quỹ đang điều chỉnh giảm (${changePercent}% so với phiên liền trước). ${weekInsight}`;
-    } else {
-      return `NAV quỹ đi ngang trong phiên gần nhất. ${weekInsight}`;
-    }
+interface AnalyzeNavPoint {
+  nav: number;
+}
+
+interface AnalyzeParams {
+  fundCode: string;
+  navHistory: AnalyzeNavPoint[];
+  topHoldings: AnalyzeHolding[];
+}
+
+export async function analyzeFund(params: AnalyzeParams) {
+  const { fundCode, navHistory, topHoldings } = params;
+
+  if (!navHistory || navHistory.length < 2) {
+    return "Chua co du du lieu lich su de phan tich.";
+  }
+
+  const latest = navHistory[0].nav;
+  const previous = navHistory[1].nav;
+  const change = latest - previous;
+  const changePercent = ((change / previous) * 100).toFixed(2);
+
+  const weekOld = navHistory.length >= 7 ? navHistory[6].nav : null;
+  let weekInsight = "";
+
+  if (weekOld) {
+    const weekChange = latest - weekOld;
+    const weekChangePercent = ((weekChange / weekOld) * 100).toFixed(2);
+    weekInsight = `So voi tuan truoc, NAV ${weekChange > 0 ? "tang" : "giam"} ${Math.abs(
+      Number(weekChangePercent),
+    )}%.`;
+  }
+
+  const fallbackMessage =
+    change > 0
+      ? `Tin hieu tich cuc: Quy ${fundCode} dang co dau hieu tang truong ngan han (+${changePercent}% so voi phien lien truoc). ${weekInsight}`
+      : change < 0
+        ? `Xu huong dieu chinh: Quy ${fundCode} dang dieu chinh ${changePercent}% so voi phien lien truoc. ${weekInsight}`
+        : `Phan tich: NAV quy ${fundCode} di ngang trong phien gan nhat. ${weekInsight}`;
+
+  if (!process.env.OPENAI_API_KEY) {
+    return fallbackMessage;
+  }
+
+  try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const holdingsText = topHoldings.length
+      ? topHoldings.map((holding) => `${holding.stock_code}: ${holding.weight}%`).join(", ")
+      : "Khong co du lieu danh muc";
+
+    const prompt = `Ban la chuyen gia phan tich quy dau tu tai Viet Nam. Hay viet doan nhan dinh ngan, suc tich bang tieng Viet cho quy ${fundCode}.
+- Bien dong NAV moi nhat: ${changePercent}% so voi phien truoc. ${weekInsight}
+- Top danh muc hien tai: ${holdingsText}
+Hay danh gia tac dong cua danh muc len xu huong quy va goi y Hold, Buy hoac Wait.`;
+
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "gpt-4o-mini",
+      max_tokens: 300,
+      temperature: 0.7,
+    });
+
+    return completion.choices[0]?.message?.content?.trim() || fallbackMessage;
+  } catch (error) {
+    console.error("OpenAI call failed:", error);
+    return `${fallbackMessage}\n\n(Luu y: Khong the ket noi toi dich vu AI phan tich sau)`;
+  }
 }

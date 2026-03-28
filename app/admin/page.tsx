@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import HomeEditor from "@/components/HomeEditor";
+import { defaultSitePages, mergeWithDefaultSitePages } from "@/lib/sitePages";
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
 
@@ -72,20 +73,15 @@ export default function AdminDashboard() {
         const res = await fetch("/api/config");
         const data = await res.json();
         
-        if (data.pages) setPages(data.pages);
-        else setPages([
-          { id: 1, title: "Trang chủ", slug: "/", status: "published", views: "12.5k", blocks: [] },
-          { id: 2, title: "Đăng ký Dịch vụ", slug: "/dang-ky", status: "published", views: "3.2k", blocks: [] },
-          { id: 3, title: "Dịch vụ Tài chính", slug: "/services/bank", status: "draft", views: "0", blocks: [] },
-          { id: 4, title: "Giải pháp SaaS", slug: "/services/saas", status: "published", views: "1.8k", blocks: [] },
-        ]);
+        if (data.pages && Array.isArray(data.pages) && data.pages.length > 0) setPages(mergeWithDefaultSitePages(data.pages));
+        else setPages(defaultSitePages);
 
         if (data.links) setLinks(data.links);
         else setLinks([
           { id: 1, label: "Trang chủ", url: "/", order: 1, visible: true },
-          { id: 2, label: "Dịch vụ", url: "/services", order: 2, visible: true },
-          { id: 3, label: "Hỗ trợ", url: "/support", order: 3, visible: true },
-          { id: 4, label: "Blog Tài chính", url: "/blog", order: 4, visible: false },
+          { id: 2, label: "Dịch vụ", url: "/service/bank", order: 2, visible: true },
+          { id: 3, label: "Hỗ trợ", url: "/dang-ky", order: 3, visible: true },
+          { id: 4, label: "Thông tin quỹ", url: "/fund-intelligence", order: 4, visible: true },
         ]);
 
         if (data.settings) setSystemSettings(data.settings);
@@ -394,7 +390,7 @@ export default function AdminDashboard() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                   <h1 className="font-headline font-bold text-3xl text-on-surface">Quản lý & Biên tập Trang</h1>
-                  <p className="text-on-surface-variant text-sm mt-2">Kéo thả, soạn thảo và thiết kế nội dung trực quan cho trang web của bạn.</p>
+                  <p className="text-on-surface-variant text-sm mt-2">Kéo thả, soạn thảo và thiết kế nội dung trực quan cho trang web của bạn. Trang có slug `/` sẽ là landing page chính của hệ thống.</p>
                 </div>
                 <button 
                   onClick={() => { setEditingId(null); setFormData({ title: "", slug: "", status: "draft", blocks: [] }); setIsPageModalOpen(true); }}

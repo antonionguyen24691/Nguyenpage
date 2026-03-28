@@ -12,6 +12,11 @@ type FundChartProps = {
   data: ChartData[];
 };
 
+// Helper function to convert 'YYYY-MM-DD' or ISO string to standard YYYY-MM-DD that lightweight-charts understands
+const formatTime = (timeStr: string) => {
+  return timeStr.substring(0, 10);
+};
+
 export default function FundChart({ data }: FundChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -24,29 +29,45 @@ export default function FundChart({ data }: FundChartProps) {
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#666',
+        textColor: '#6b7280', // neutral-500
       },
       width: chartContainerRef.current.clientWidth,
       height: 400,
       grid: {
-        vertLines: { color: '#f0f0f0' },
-        horzLines: { color: '#f0f0f0' },
+        vertLines: { color: '#f3f4f6', style: 1 }, // dashed
+        horzLines: { color: '#f3f4f6', style: 1 }, // dashed
       },
       rightPriceScale: {
         borderVisible: false,
+        autoScale: true,
+        alignLabels: true,
       },
       timeScale: {
         borderVisible: false,
+        timeVisible: false,
+      },
+      crosshair: {
+        vertLine: {
+          color: '#9ca3af',
+          width: 1,
+          style: 3,
+        },
+        horzLine: {
+          color: '#9ca3af',
+          width: 1,
+          style: 3,
+        },
       },
     });
     
     chartRef.current = chart;
 
-    // Thêm Area Series (V5 Syntax)
+    // Tính toán baseValue là mức thấp nhất để phần xanh (Area) không kéo dài tận mốc 0
+    // Ta set autoScale: true, và bottomColor trong suốt dần
     const newSeries = chart.addSeries(AreaSeries, {
-      lineColor: '#2962FF',
-      topColor: '#2962FF',
-      bottomColor: 'rgba(41, 98, 255, 0.28)',
+      lineColor: '#4f46e5', // Indigo-600
+      topColor: 'rgba(79, 70, 229, 0.4)',
+      bottomColor: 'rgba(79, 70, 229, 0.0)',
       lineWidth: 2,
     });
     seriesRef.current = newSeries;
@@ -67,14 +88,30 @@ export default function FundChart({ data }: FundChartProps) {
   // Cập nhật dữ liệu mỗi khi props.data thay đổi
   useEffect(() => {
     if (seriesRef.current && data.length > 0) {
-      // Sắp xếp dữ liệu từ cũ đến mới (yêu cầu của lightweight-charts)
-      const sortedData = [...data].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
-      seriesRef.current.setData(sortedData);
-      chartRef.current?.timeScale().fitContent();
+      // Sắp xếp dữ liệu từ cũ đến mới và format ngày
+      const formattedData = [...data]
+        .map(item => ({
+          time: formatTime(item.time),
+          value: item.value
+        }))
+        .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+      // Loại bỏ các phần tử bị lặp timestamp (nếu có)
+      const uniqueData = formattedData.filter((item, index, self) => 
+        index === 0 || item.time !== self[index - 1].time
+      );
+
+      // Lightweight charts requires time property to be strictly ordered and unique
+      seriesRef.current.setData(uniqueData as any);
+      
+      // Cho chart tự động fit khung nhìn
+      setTimeout(() => {
+         chartRef.current?.timeScale().fitContent();
+      }, 50);
     }
   }, [data]);
 
   return (
-    <div className="w-full h-[400px] border rounded-xl overflow-hidden bg-white shadow-sm p-4" ref={chartContainerRef} />
+    <div className="w-full h-[400px] border border-neutral-100 rounded-xl overflow-hidden bg-white shadow-sm p-4 relative" ref={chartContainerRef} />
   );
 }

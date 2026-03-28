@@ -74,7 +74,7 @@ export default function HomeEditor() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-headline font-bold text-3xl text-on-surface">Biên tập Trang chủ</h1>
-          <p className="text-on-surface-variant text-sm mt-2">Chỉnh sửa nội dung, hyperlink và thông tin hiển thị trên trang chủ.</p>
+          <p className="text-on-surface-variant text-sm mt-2">Chỉnh sửa dữ liệu fallback cho trang chủ. Nếu page builder của slug `/` có block thì landing page sẽ ưu tiên render từ tab Page Builder.</p>
         </div>
         <button
           onClick={save}

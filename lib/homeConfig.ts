@@ -49,7 +49,7 @@ export const defaultHomeConfig: HomeConfig = {
   bankingTitle: "Dịch vụ Tài chính & Ngân hàng",
   bankingDesc: "Giải pháp tài chính toàn diện, bảo mật và tối ưu hóa dòng vốn cho Cá nhân & Doanh nghiệp.",
   bankingViewAllText: "Xem tất cả dịch vụ",
-  bankingViewAllUrl: "/services/bank",
+  bankingViewAllUrl: "/service/bank",
   bankingCards: [
     {
       title: "Tài khoản & Hộ kinh doanh",
@@ -65,19 +65,19 @@ export const defaultHomeConfig: HomeConfig = {
       title: "Dịch vụ Tiền gửi",
       desc: "Giải pháp tiết kiệm linh hoạt, an toàn với lãi suất cạnh tranh, tối ưu hóa nguồn tiền nhàn rỗi.",
       icon: "savings",
-      url: "/services/bank",
+      url: "/service/bank",
     },
     {
       title: "Tín dụng & Cho vay",
       desc: "Hỗ trợ vay tiêu dùng, vay mua nhà, vay vốn kinh doanh với hạn mức cao và thời gian giải ngân nhanh chóng.",
       icon: "payments",
-      url: "/services/bank",
+      url: "/service/bank",
     },
     {
       title: "Bảo hiểm & Đầu tư Tài chính",
       desc: "Bảo vệ rủi ro và gia tăng tài sản bền vững thông qua các chứng chỉ quỹ linh hoạt, trái phiếu và gói bảo hiểm nhân thọ/phi nhân thọ từ các đối tác hàng đầu.",
       icon: "trending_up",
-      url: "/services/bank",
+      url: "/service/bank",
     },
   ],
 
@@ -87,10 +87,10 @@ export const defaultHomeConfig: HomeConfig = {
   saasTitleHighlight: "Phần mềm (SaaS)",
   saasDesc: "Vượt khỏi giới hạn tài chính truyền thống. Chúng tôi thiết kế và vận hành hệ thống phần mềm chuyên biệt, giúp số hóa hoàn toàn mô hình kinh doanh của bạn.",
   saasCards: [
-    { title: "Tạo App SaaS", desc: "Phát triển phần mềm theo mô hình Đăng ký (Subscription) cho startup và SMEs.", icon: "app_promo", url: "/services/saas", linkText: "Khám phá" },
-    { title: "Quản lý Nhà trọ", desc: "App cho thuê và quản lý phòng trọ. Tự động thu tiền điện nước, xuất hóa đơn.", icon: "real_estate_agent", url: "/services/rental", linkText: "Khám phá" },
-    { title: "Hỗ trợ Bán hàng", desc: "Phần mềm POS bán lẻ đa kênh, đồng bộ kho hàng và tích hợp thanh toán QR CODE.", icon: "storefront", url: "/services/pos", linkText: "Khám phá" },
-    { title: "Tổng hợp Kế toán", desc: "Nền tảng báo cáo tài chính AI. Phân loại thu chi tự động nhờ kết nối Open Banking trực tiếp.", icon: "account_balance_wallet", url: "/services/accounting", linkText: "Khám phá" },
+    { title: "Tạo App SaaS", desc: "Phát triển phần mềm theo mô hình Đăng ký (Subscription) cho startup và SMEs.", icon: "app_promo", url: "/service/saas", linkText: "Khám phá" },
+    { title: "Quản lý Nhà trọ", desc: "App cho thuê và quản lý phòng trọ. Tự động thu tiền điện nước, xuất hóa đơn.", icon: "real_estate_agent", url: "/service/rental", linkText: "Khám phá" },
+    { title: "Hỗ trợ Bán hàng", desc: "Phần mềm POS bán lẻ đa kênh, đồng bộ kho hàng và tích hợp thanh toán QR CODE.", icon: "storefront", url: "/service/pos", linkText: "Khám phá" },
+    { title: "Tổng hợp Kế toán", desc: "Nền tảng báo cáo tài chính AI. Phân loại thu chi tự động nhờ kết nối Open Banking trực tiếp.", icon: "account_balance_wallet", url: "/service/accounting", linkText: "Khám phá" },
   ],
 
   // Section 3

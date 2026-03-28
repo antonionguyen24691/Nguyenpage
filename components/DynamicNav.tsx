@@ -14,8 +14,9 @@ interface NavLink {
 
 const defaultLinks: NavLink[] = [
   { id: 1, label: "Trang chu", url: "/", order: 1, visible: true },
-  { id: 2, label: "Dang ky", url: "/dang-ky", order: 2, visible: true },
-  { id: 3, label: "Fund Intelligence", url: "/fund-intelligence", order: 3, visible: true },
+  { id: 2, label: "Dich vu", url: "/service/bank", order: 2, visible: true },
+  { id: 3, label: "Ho tro", url: "/dang-ky", order: 3, visible: true },
+  { id: 4, label: "Thong tin quy", url: "/fund-intelligence", order: 4, visible: true },
 ];
 
 export default function DynamicNav() {
