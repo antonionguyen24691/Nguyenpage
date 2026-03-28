@@ -1,10 +1,22 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+
+import { useEffect, useRef, useState } from "react";
+
+type ChatEntry = {
+  role: "user" | "bot";
+  text: string;
+};
+
+const starterPrompts = [
+  "Toi muon duoc tu van mo tai khoan doanh nghiep",
+  "Giai phap SaaS nao phu hop de van hanh phong tro?",
+  "Cho toi xem cac buoc dang ky nhanh",
+];
 
 export default function Chatbot() {
   const [open, setOpen] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [chat, setChat] = useState<{ role: "user" | "bot"; text: string }[]>([]);
+  const [message, setMessage] = useState("");
+  const [chat, setChat] = useState<ChatEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -12,120 +24,163 @@ export default function Chatbot() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [chat]);
+  }, [chat, loading]);
 
-  const send = async () => {
-    if (!msg.trim()) return;
-    const userMsg = msg.trim();
-    setChat((prev) => [...prev, { role: "user", text: userMsg }]);
-    setMsg("");
+  const send = async (input?: string) => {
+    const nextMessage = (input ?? message).trim();
+    if (!nextMessage) return;
+
+    setChat((prev) => [...prev, { role: "user", text: nextMessage }]);
+    setMessage("");
     setLoading(true);
 
     try {
       const res = await fetch("/api/chatbot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg }),
+        body: JSON.stringify({ message: nextMessage }),
       });
       const data = await res.json();
-      setChat((prev) => [...prev, { role: "bot", text: data.reply }]);
+      setChat((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: data.reply || "Toi da nhan yeu cau. Hay cho toi them mot chut thong tin.",
+        },
+      ]);
     } catch {
-      setChat((prev) => [...prev, { role: "bot", text: "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại." }]);
+      setChat((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: "Co loi ket noi tam thoi. Ban co the thu lai sau it phut.",
+        },
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  };
-
   return (
     <>
-      {/* Toggle Button */}
       <button
         id="chatbot-toggle"
-        onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-br from-[var(--gradient-start)] to-[var(--gradient-end)] text-white flex items-center justify-center shadow-xl shadow-blue-500/30 hover:scale-110 transition-transform cursor-pointer z-50 animate-pulse-glow"
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="animate-pulse-glow fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[var(--gradient-start)] to-[var(--gradient-end)] text-white shadow-[0_18px_45px_rgba(31,77,183,0.28)] hover:scale-105"
+        aria-label="Open chatbot"
       >
-        {open ? "✕" : "💬"}
+        <span className="material-symbols-outlined text-[26px]">
+          {open ? "close" : "forum"}
+        </span>
       </button>
 
-      {/* Chat Panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 w-[360px] glass rounded-2xl shadow-2xl z-50 animate-slide-in-right overflow-hidden glow">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] px-5 py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">🤖</div>
-              <div>
-                <div className="font-semibold text-white text-sm">Banker Bot</div>
-                <div className="text-[10px] text-white/60 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
-                  Online
+        <div className="animate-slide-in-right fixed bottom-26 right-4 z-50 w-[calc(100vw-2rem)] max-w-[380px] overflow-hidden rounded-[2rem] border border-white/70 bg-white/92 shadow-[0_28px_70px_rgba(16,32,51,0.18)] backdrop-blur-2xl md:right-6">
+          <div className="bg-gradient-to-r from-[var(--gradient-start)] via-[#10878f] to-[var(--gradient-end)] px-5 py-5 text-white">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/18">
+                  <span className="material-symbols-outlined text-[22px]">smart_toy</span>
                 </div>
+                <div>
+                  <p className="font-headline text-base font-extrabold">Banker Assistant</p>
+                  <p className="text-xs text-white/78">
+                    Tro ly tu van nhanh ve tai chinh va SaaS
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold">
+                Online
               </div>
             </div>
           </div>
 
-          {/* Messages */}
-          <div ref={scrollRef} className="h-[280px] overflow-y-auto p-4 space-y-3">
+          <div ref={scrollRef} className="max-h-[360px] space-y-4 overflow-y-auto bg-white/80 p-4">
             {chat.length === 0 && (
-              <div className="text-center text-[var(--muted)] text-sm mt-8">
-                <div className="text-3xl mb-2">👋</div>
-                <p>Xin chào! Tôi có thể giúp gì cho bạn?</p>
+              <div className="space-y-4">
+                <div className="rounded-3xl border border-outline-variant/60 bg-surface-container-low p-4 text-sm leading-7 text-on-surface-variant">
+                  Ban co the dat cau hoi nhanh, xin bao gia hoac de he thong huong dan
+                  luong dang ky phu hop.
+                </div>
+                <div className="space-y-2">
+                  {starterPrompts.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => send(prompt)}
+                      className="flex w-full items-center justify-between rounded-2xl border border-outline-variant/60 bg-white px-4 py-3 text-left text-sm font-medium text-on-surface hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      <span className="pr-3">{prompt}</span>
+                      <span className="material-symbols-outlined text-[18px] text-primary">
+                        north_east
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            {chat.map((c, i) => (
+
+            {chat.map((entry, index) => (
               <div
-                key={i}
-                className={`flex ${c.role === "user" ? "justify-end" : "justify-start"} animate-fade-in-up`}
+                key={`${entry.role}-${index}`}
+                className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                    c.role === "user"
-                      ? "bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] text-white rounded-tr-sm"
-                      : "bg-[var(--surface-hover)] text-[var(--foreground)] rounded-tl-sm"
+                  className={`max-w-[86%] rounded-[1.5rem] px-4 py-3 text-sm leading-7 ${
+                    entry.role === "user"
+                      ? "rounded-br-md bg-gradient-to-br from-[var(--gradient-start)] to-[var(--gradient-end)] text-white"
+                      : "rounded-bl-md border border-outline-variant/60 bg-surface-container-low text-on-surface"
                   }`}
                 >
-                  {c.text}
+                  {entry.text}
                 </div>
               </div>
             ))}
+
             {loading && (
-              <div className="flex justify-start animate-fade-in-up">
-                <div className="bg-[var(--surface-hover)] px-4 py-2.5 rounded-2xl rounded-tl-sm text-sm">
-                  <span className="inline-flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)] animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)] animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)] animate-bounce" style={{ animationDelay: "300ms" }}></span>
-                  </span>
+              <div className="flex justify-start">
+                <div className="rounded-[1.5rem] rounded-bl-md border border-outline-variant/60 bg-surface-container-low px-4 py-3">
+                  <div className="inline-flex gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-primary/55 animate-bounce" />
+                    <span
+                      className="h-2 w-2 rounded-full bg-primary/55 animate-bounce"
+                      style={{ animationDelay: "120ms" }}
+                    />
+                    <span
+                      className="h-2 w-2 rounded-full bg-primary/55 animate-bounce"
+                      style={{ animationDelay: "240ms" }}
+                    />
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Input */}
-          <div className="border-t border-[var(--border)] p-3">
-            <div className="flex items-center gap-2">
-              <input
+          <div className="border-t border-outline-variant/60 bg-white/90 p-4">
+            <div className="flex items-end gap-2">
+              <textarea
                 id="chatbot-input"
-                value={msg}
-                onChange={(e) => setMsg(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Nhập tin nhắn..."
-                className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/50 focus:outline-none focus:border-[var(--primary)] transition-all"
+                rows={1}
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    send();
+                  }
+                }}
+                placeholder="Nhap cau hoi cua ban..."
+                className="min-h-[52px] flex-1 rounded-2xl border border-outline-variant/70 bg-surface-container-low px-4 py-3 text-sm text-on-surface outline-none focus:border-primary"
               />
               <button
                 id="chatbot-send"
-                onClick={send}
-                disabled={loading || !msg.trim()}
-                className="w-10 h-10 rounded-xl bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] text-white flex items-center justify-center hover:opacity-90 transition-all disabled:opacity-40 cursor-pointer"
+                type="button"
+                onClick={() => send()}
+                disabled={loading || !message.trim()}
+                className="flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-on-surface text-white hover:bg-primary disabled:cursor-not-allowed disabled:opacity-35"
               >
-                ➤
+                <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
               </button>
             </div>
           </div>

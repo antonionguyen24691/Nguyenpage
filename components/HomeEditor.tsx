@@ -6,7 +6,6 @@ import { defaultHomeConfig, type HomeConfig, type HomeCard } from "@/lib/homeCon
 export default function HomeEditor() {
   const [config, setConfig] = useState<HomeConfig>(defaultHomeConfig);
   const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -23,7 +22,6 @@ export default function HomeEditor() {
 
   const save = async () => {
     try {
-      setSaveError("");
       const res = await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -37,7 +35,6 @@ export default function HomeEditor() {
       setTimeout(() => setSaved(false), 2000);
     } catch (e: any) {
       console.error("Failed to save home config:", e);
-      setSaveError(e.message || "Failed to save");
       alert("Lỗi lưu dữ liệu: " + (e.message || "Failed to save"));
     }
   };
