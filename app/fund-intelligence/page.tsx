@@ -233,6 +233,19 @@ export default function FundIntelligenceDashboard() {
     () => parseInsightSections(navPayload?.ai_insight),
     [navPayload?.ai_insight],
   );
+  const fallbackFunds = useMemo(() => {
+    if (!currentFund) {
+      return [];
+    }
+
+    return funds
+      .filter((fund) => fund.code !== currentFund.code && fund.point_count > 0)
+      .filter(
+        (fund) =>
+          fund.category === currentFund.category || fund.company === currentFund.company,
+      )
+      .slice(0, 3);
+  }, [currentFund, funds]);
 
   function handleSelectFund(fundCode: string) {
     setSelectedFund(fundCode);
@@ -342,6 +355,35 @@ export default function FundIntelligenceDashboard() {
             </div>
           ) : (
             <>
+              {currentFund?.point_count === 0 ? (
+                <div className="rounded-[2rem] border border-amber-200 bg-amber-50 px-5 py-5 text-sm leading-7 text-amber-950">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-amber-800">
+                    Hướng xử lý dữ liệu thiếu
+                  </div>
+                  <p className="mt-2">
+                    {currentFund.data_issue ??
+                      "Quỹ này hiện chưa có chuỗi NAV ổn định để dựng biểu đồ và tính toán thống kê."}
+                  </p>
+                  <p className="mt-2">
+                    Hướng xử lý đúng là: bổ sung nguồn crawl cho quỹ này hoặc tạm thời chuyển sang một quỹ cùng nhóm đã có dữ liệu đầy đủ hơn.
+                  </p>
+                  {fallbackFunds.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {fallbackFunds.map((fund) => (
+                        <button
+                          key={fund.code}
+                          type="button"
+                          onClick={() => handleSelectFund(fund.code)}
+                          className="rounded-full border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-on-surface"
+                        >
+                          Xem {fund.code}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.35fr)_360px]">
                 <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
                   <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

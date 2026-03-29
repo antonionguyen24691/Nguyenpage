@@ -63,7 +63,7 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+    <div className="space-y-6">
       <div className="relative mx-auto h-[280px] w-full max-w-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -104,7 +104,7 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
         <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
           Top tỷ trọng hiện tại
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+        <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
           {topData.map((item, index) => (
             <div
               key={item.stock_code}
@@ -127,7 +127,7 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
               </div>
 
               {item.stock_code !== "Khác" ? (
-                <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                   <div className="rounded-2xl bg-white/75 px-3 py-2">
                     <div className="text-xs text-on-surface-variant">Giá hiện tại</div>
                     <div className="mt-1 font-semibold text-on-surface">{formatPrice(item.currentPrice)}</div>
