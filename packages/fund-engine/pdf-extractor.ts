@@ -34,12 +34,72 @@ const VINA_CODES = new Set(["VEOF", "VESAF", "VFF", "VIBF", "VDEF", "VLBF"]);
 const MAX_HISTORICAL_PERIODS = 4;
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+const VINA_PDF_DAYS = ["08", "10", "12", "14", "15", "18", "20", "25"];
 const PDF_WORKER_URL = pathToFileURL(
   path.join(process.cwd(), "node_modules", "pdf-parse", "dist", "pdf-parse", "web", "pdf.worker.min.mjs"),
 ).href;
 
 function monthStart(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01`;
+}
+
+function padMonth(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function toMonthLabel(date: Date) {
+  const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${labels[date.getUTCMonth()]}-${date.getUTCFullYear()}`;
+}
+
+function shiftMonth(date: Date, offset: number) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1));
+}
+
+function getRecentReportMonths(limit = MAX_HISTORICAL_PERIODS) {
+  const base = monthStart(shiftMonth(new Date(), -1));
+  const start = new Date(`${base}T00:00:00.000Z`);
+  return Array.from({ length: limit }, (_, index) => shiftMonth(start, -index));
+}
+
+function buildVinaFactsheetCandidates(fundCode: string, reportMonth: Date) {
+  const reportLabel = toMonthLabel(reportMonth);
+  const publicationMonths = [shiftMonth(reportMonth, 1), reportMonth, shiftMonth(reportMonth, 2)];
+  const candidates: string[] = [];
+
+  for (const publicationMonth of publicationMonths) {
+    const year = publicationMonth.getUTCFullYear();
+    const month = publicationMonth.getUTCMonth() + 1;
+    for (const day of VINA_PDF_DAYS) {
+      candidates.push(
+        `https://wm.vinacapital.com/wp-content/uploads/${year}/${padMonth(month)}/${year}${padMonth(month)}${day}-VINACAPITAL-${fundCode}_Monthly-Factsheet_${reportLabel}-EN.pdf`,
+      );
+      candidates.push(
+        `https://wm.vinacapital.com/wp-content/uploads/${year}/${padMonth(month)}/${year}${padMonth(month)}${day}-VINACAPITAL-${fundCode}_Monthly-Factsheet_${reportLabel}-VN.pdf`,
+      );
+    }
+  }
+
+  return [...new Set(candidates)];
+}
+
+async function resolveReachableUrl(urls: string[]) {
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        method: "HEAD",
+        headers: { "User-Agent": USER_AGENT },
+        cache: "no-store",
+      });
+      if (response.ok) {
+        return url;
+      }
+    } catch {
+      // ignore and continue
+    }
+  }
+
+  return null;
 }
 
 function parseMonthDate(value: string) {
@@ -349,14 +409,41 @@ async function collectDragonHoldings(fundCode: string): Promise<HoldingsSyncResu
 }
 
 async function collectVinaHoldings(fundCode: string): Promise<HoldingsSyncResult & { rows: HoldingRow[] }> {
+  const rows: HoldingRow[] = [];
+  const periods = new Set<string>();
+  const notes: string[] = [];
+
+  for (const reportMonth of getRecentReportMonths()) {
+    const reportDate = monthStart(reportMonth);
+    const pdfUrl = await resolveReachableUrl(buildVinaFactsheetCandidates(fundCode, reportMonth));
+
+    if (!pdfUrl) {
+      notes.push(`${reportDate}: factsheet not found`);
+      continue;
+    }
+
+    try {
+      const pdfRows = await extractHoldingsFromPdfUrl(fundCode, pdfUrl, reportDate);
+      if (pdfRows.length > 0) {
+        pdfRows.forEach((row: HoldingRow) => rows.push(row));
+        periods.add(reportDate);
+      } else {
+        notes.push(`${reportDate}: no holdings extracted`);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown PDF extraction error";
+      notes.push(`${reportDate}: ${message}`);
+    }
+  }
+
   return {
-    success: false,
+    success: rows.length > 0,
     fund: fundCode,
-    periods: [],
-    source: "VinaCapital official",
-    holdings_extracted: 0,
-    note: "Official VinaCapital pages currently return Cloudflare 403 to this runtime. Existing local/DB holdings are kept as fallback.",
-    rows: [],
+    periods: [...periods].sort((left, right) => new Date(right).getTime() - new Date(left).getTime()),
+    source: "VinaCapital factsheet PDFs",
+    holdings_extracted: rows.length,
+    note: notes.length > 0 ? notes.join(" | ") : undefined,
+    rows: dedupeHoldings(rows),
   };
 }
 
@@ -393,7 +480,18 @@ export async function processFundHoldings(fundCode: string) {
     }
 
     if (VINA_CODES.has(fundCode)) {
-      return collectVinaHoldings(fundCode);
+      const result = await collectVinaHoldings(fundCode);
+      if (result.rows.length > 0) {
+        await persistFundData({
+          funds: fundCatalog.map((entry) => ({
+            code: entry.code,
+            name: entry.name,
+            company: entry.company,
+          })),
+          holdings: result.rows,
+        });
+      }
+      return result;
     }
 
     return {

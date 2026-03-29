@@ -6,6 +6,9 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 type Holding = {
   stock_code: string;
   weight: number;
+  currentPrice?: number | null;
+  monthAgoPrice?: number | null;
+  monthChangePercent?: number | null;
 };
 
 const COLORS = [
@@ -29,6 +32,10 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
         Chua co du lieu danh muc cho ky bao cao dang chon.
       </div>
     );
+  }
+
+  function formatPrice(value: number | null | undefined) {
+    return value === null || value === undefined ? "N/A" : value.toLocaleString("vi-VN");
   }
 
   const topData = data.slice(0, 10).map((item) => ({
@@ -95,10 +102,26 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
               />
               <div className="min-w-0 flex-1">
                 <div className="truncate font-semibold text-on-surface">{item.stock_code}</div>
+                <div className="mt-1 text-xs text-on-surface-variant">
+                  Gia hien tai {formatPrice(item.currentPrice)} | 1M {formatPrice(item.monthAgoPrice)}
+                </div>
               </div>
-              <span className="shrink-0 text-sm font-semibold text-on-surface-variant">
-                {item.weight.toFixed(2)}%
-              </span>
+              <div className="shrink-0 text-right">
+                <div className="text-sm font-semibold text-on-surface-variant">{item.weight.toFixed(2)}%</div>
+                <div
+                  className={`mt-1 text-xs ${
+                    item.monthChangePercent === null || item.monthChangePercent === undefined
+                      ? "text-on-surface-variant"
+                      : item.monthChangePercent >= 0
+                        ? "text-primary"
+                        : "text-[var(--color-error)]"
+                  }`}
+                >
+                  {item.monthChangePercent === null || item.monthChangePercent === undefined
+                    ? "N/A"
+                    : `${item.monthChangePercent >= 0 ? "+" : ""}${item.monthChangePercent.toFixed(2)}%`}
+                </div>
+              </div>
             </div>
           ))}
         </div>

@@ -16,8 +16,39 @@ const SSIAM_PAGES = {
 };
 
 const DRAGON_CODES = ["DCDS", "DCDE", "DCBF", "DCIP"];
+const VINA_CODES = ["VEOF", "VESAF", "VFF", "VIBF", "VDEF", "VLBF"];
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+const VINA_PDF_DAYS = ["08", "10", "12", "14", "15", "18", "20", "25"];
+const STOP_TICKERS = new Set([
+  "NAV",
+  "YTD",
+  "AUM",
+  "VND",
+  "PIT",
+  "PWC",
+  "ETF",
+  "USD",
+  "VINA",
+  "INDEX",
+  "CASH",
+  "BANK",
+  "BANKS",
+  "FUND",
+  "SECTOR",
+  "TOTAL",
+  "JUN",
+  "JAN",
+  "FEB",
+  "MAR",
+  "APR",
+  "MAY",
+  "AUG",
+  "SEP",
+  "OCT",
+  "NOV",
+  "DEC",
+]);
 
 loadEnv();
 
@@ -71,6 +102,64 @@ function parseWeight(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function padMonth(value) {
+  return String(value).padStart(2, "0");
+}
+
+function shiftMonth(date, offset) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1));
+}
+
+function toMonthLabel(date) {
+  const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${labels[date.getUTCMonth()]}-${date.getUTCFullYear()}`;
+}
+
+function getRecentReportMonths(limit = 4) {
+  const now = new Date();
+  const start = shiftMonth(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)), -1);
+  return Array.from({ length: limit }, (_, index) => shiftMonth(start, -index));
+}
+
+function buildVinaFactsheetCandidates(fundCode, reportMonth) {
+  const reportLabel = toMonthLabel(reportMonth);
+  const publicationMonths = [shiftMonth(reportMonth, 1), reportMonth, shiftMonth(reportMonth, 2)];
+  const urls = [];
+
+  for (const publicationMonth of publicationMonths) {
+    const year = publicationMonth.getUTCFullYear();
+    const month = publicationMonth.getUTCMonth() + 1;
+    for (const day of VINA_PDF_DAYS) {
+      urls.push(
+        `https://wm.vinacapital.com/wp-content/uploads/${year}/${padMonth(month)}/${year}${padMonth(month)}${day}-VINACAPITAL-${fundCode}_Monthly-Factsheet_${reportLabel}-EN.pdf`,
+      );
+      urls.push(
+        `https://wm.vinacapital.com/wp-content/uploads/${year}/${padMonth(month)}/${year}${padMonth(month)}${day}-VINACAPITAL-${fundCode}_Monthly-Factsheet_${reportLabel}-VN.pdf`,
+      );
+    }
+  }
+
+  return [...new Set(urls)];
+}
+
+async function resolveReachableUrl(urls) {
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        method: "HEAD",
+        headers: { "User-Agent": USER_AGENT },
+      });
+      if (response.ok) {
+        return url;
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  return null;
+}
+
 function mergeRows(existingRows, newRows) {
   const unique = new Map();
   for (const row of [...existingRows, ...newRows]) {
@@ -98,6 +187,11 @@ async function extractPdfText(url) {
 }
 
 async function llmExtract(fundCode, reportDate, text) {
+  const heuristic = extractHoldingsHeuristically(fundCode, text);
+  if (heuristic.length > 0) {
+    return heuristic;
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     return [];
   }
@@ -133,6 +227,101 @@ ${text.slice(0, 18000)}`,
   } catch {
     return [];
   }
+}
+
+function normalizeText(pdfText) {
+  return pdfText
+    .replace(/\r/g, "")
+    .replace(/â€™/g, "'")
+    .replace(/â€œ|â€/g, '"')
+    .replace(/Ã¡/g, "á")
+    .replace(/Ã©/g, "é")
+    .replace(/Ã­/g, "í")
+    .replace(/Ã³/g, "ó")
+    .replace(/Ãº/g, "ú");
+}
+
+function getSecondPageText(pdfText) {
+  const normalized = normalizeText(pdfText);
+  const pages = normalized.split(/--\s+\d+\s+of\s+\d+\s+--/i).map((part) => part.trim()).filter(Boolean);
+  return pages.length > 1 ? pages[pages.length - 1] : normalized;
+}
+
+function extractWeightBlock(lines) {
+  const blocks = [];
+  let current = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (/^-?\d{1,2}(?:\.\d{1,2})?%?$/.test(line)) {
+      const value = Number(line.replace("%", ""));
+      if (Number.isFinite(value) && value > 0 && value <= 100) {
+        current.push(value);
+        continue;
+      }
+    }
+
+    if (current.length >= 5) {
+      blocks.push([...current]);
+    }
+    current = [];
+  }
+
+  if (current.length >= 5) {
+    blocks.push(current);
+  }
+
+  return blocks.sort((left, right) => right.length - left.length)[0] || [];
+}
+
+function extractTickerCandidates(sectionText, fundCode) {
+  const unique = new Set();
+  const tickers = [];
+
+  for (const rawLine of sectionText.split("\n")) {
+    const token = rawLine.trim().replace(/[^A-Z0-9]/g, "");
+    if (!/^[A-Z][A-Z0-9]{1,5}$/.test(token)) {
+      continue;
+    }
+    if (token === fundCode || token.startsWith("VINACAPITAL")) {
+      continue;
+    }
+    if (STOP_TICKERS.has(token) || unique.has(token)) {
+      continue;
+    }
+
+    unique.add(token);
+    tickers.push(token);
+  }
+
+  return tickers;
+}
+
+function extractHoldingsHeuristically(fundCode, pdfText) {
+  const secondPageText = getSecondPageText(pdfText);
+  const lines = secondPageText.split("\n").map((line) => line.trim()).filter(Boolean);
+  const monthLineIndex = lines.findIndex((line) => /Jan\s+Feb\s+Mar/i.test(line));
+  const weightLines = extractWeightBlock(monthLineIndex > 0 ? lines.slice(0, monthLineIndex) : lines);
+
+  if (weightLines.length === 0) {
+    return [];
+  }
+
+  const topHoldingsIndex = secondPageText.search(/Top holdings/i);
+  const sectionStart = topHoldingsIndex >= 0 ? Math.max(0, topHoldingsIndex - 4000) : 0;
+  const sectionEnd =
+    topHoldingsIndex >= 0 ? Math.min(secondPageText.length, topHoldingsIndex + 1800) : secondPageText.length;
+  const tickerCandidates = extractTickerCandidates(secondPageText.slice(sectionStart, sectionEnd), fundCode);
+  const pairCount = Math.min(weightLines.length, tickerCandidates.length, 10);
+
+  if (pairCount < 5) {
+    return [];
+  }
+
+  return Array.from({ length: pairCount }, (_, index) => ({
+    stock_code: tickerCandidates[index],
+    weight: weightLines[index],
+  }));
 }
 
 async function collectSSIAM() {
@@ -281,13 +470,43 @@ async function collectDragon() {
   return rows;
 }
 
+async function collectVina() {
+  const rows = [];
+  for (const fundCode of VINA_CODES) {
+    for (const reportMonth of getRecentReportMonths()) {
+      const reportDate = `${reportMonth.getUTCFullYear()}-${padMonth(reportMonth.getUTCMonth() + 1)}-01`;
+      const pdfUrl = await resolveReachableUrl(buildVinaFactsheetCandidates(fundCode, reportMonth));
+      if (!pdfUrl) {
+        continue;
+      }
+
+      let text = "";
+      try {
+        text = await extractPdfText(pdfUrl);
+      } catch {
+        continue;
+      }
+
+      const holdings = await llmExtract(fundCode, reportDate, text);
+      for (const item of holdings) {
+        const stockCode = String(item.stock_code || "").trim().toUpperCase();
+        const weight = Number(item.weight);
+        if (stockCode && Number.isFinite(weight)) {
+          rows.push({ fund_code: fundCode, stock_code: stockCode, weight, date: reportDate });
+        }
+      }
+    }
+  }
+  return rows;
+}
+
 async function main() {
   const data = fs.existsSync(localDataPath)
     ? JSON.parse(fs.readFileSync(localDataPath, "utf8"))
     : { funds: [], nav: [], holdings: [], updatedAt: new Date(0).toISOString() };
 
-  const [ssiamRows, dragonRows] = await Promise.all([collectSSIAM(), collectDragon()]);
-  const mergedHoldings = mergeRows(data.holdings || [], [...ssiamRows, ...dragonRows]);
+  const [ssiamRows, dragonRows, vinaRows] = await Promise.all([collectSSIAM(), collectDragon(), collectVina()]);
+  const mergedHoldings = mergeRows(data.holdings || [], [...ssiamRows, ...dragonRows, ...vinaRows]);
   const output = {
     ...data,
     holdings: mergedHoldings,

@@ -31,6 +31,11 @@ type Holding = {
   stock_code: string;
   weight: number;
   date: string;
+  currentPrice?: number | null;
+  currentPriceDate?: string | null;
+  monthAgoPrice?: number | null;
+  monthAgoDate?: string | null;
+  monthChangePercent?: number | null;
 };
 
 type NavPayload = {
