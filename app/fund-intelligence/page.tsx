@@ -89,6 +89,8 @@ type InsightSection = {
   body: string[];
 };
 
+type StrategyFilter = "all" | "equity" | "bond" | "balanced";
+
 const RANGE_OPTIONS = ["1M", "3M", "6M", "1Y", "ALL"] as const;
 const CHART_MODES = [
   { key: "area", label: "Miền" },
@@ -99,6 +101,19 @@ const CHART_MODES = [
 ] as const;
 const COMPARE_COLORS = ["#0c7a69", "#1f4db7", "#b86f31", "#c73a3a"];
 const MOBILE_BREAKPOINT = "(max-width: 1279px)";
+
+function formatStrategyFilterLabel(value: StrategyFilter) {
+  switch (value) {
+    case "equity":
+      return "Ưu tiên cổ phiếu";
+    case "bond":
+      return "Ưu tiên trái phiếu";
+    case "balanced":
+      return "Tài sản phân bổ";
+    default:
+      return "Tất cả chiến lược";
+  }
+}
 
 function formatPercent(value: number | null) {
   return value === null ? "N/A" : `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
@@ -159,6 +174,8 @@ export default function FundIntelligenceDashboard() {
   const [isCompact, setIsCompact] = useState(false);
   const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>("6M");
   const [chartMode, setChartMode] = useState<(typeof CHART_MODES)[number]["key"]>("area");
+  const [selectedCompany, setSelectedCompany] = useState<string>("all");
+  const [selectedStrategy, setSelectedStrategy] = useState<StrategyFilter>("all");
   const [navPayload, setNavPayload] = useState<NavPayload | null>(null);
   const [holdingsPayload, setHoldingsPayload] = useState<HoldingsPayload | null>(null);
   const [selectedHoldingsDate, setSelectedHoldingsDate] = useState<string | null>(null);
@@ -183,14 +200,38 @@ export default function FundIntelligenceDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
+  const companyOptions = useMemo(
+    () => ["all", ...new Set(funds.map((fund) => fund.company))],
+    [funds],
+  );
+  const filteredFunds = useMemo(
+    () =>
+      funds.filter((fund) => {
+        const matchCompany =
+          selectedCompany === "all" ? true : fund.company === selectedCompany;
+        const matchStrategy =
+          selectedStrategy === "all" ? true : fund.category === selectedStrategy;
+
+        return matchCompany && matchStrategy;
+      }),
+    [funds, selectedCompany, selectedStrategy],
+  );
+
   useEffect(() => {
-    if (!funds.length || selectedFund || isCompact) {
+    if (!filteredFunds.length) {
+      setSelectedFund(null);
+      setSelectedHoldingsDate(null);
       return;
     }
 
-    const preferredFund = funds.find((fund) => fund.point_count > 0) ?? funds[0];
+    if (selectedFund && filteredFunds.some((fund) => fund.code === selectedFund)) {
+      return;
+    }
+
+    const preferredFund = filteredFunds.find((fund) => fund.point_count > 0) ?? filteredFunds[0];
     setSelectedFund(preferredFund.code);
-  }, [funds, isCompact, selectedFund]);
+    setSelectedHoldingsDate(null);
+  }, [filteredFunds, selectedFund]);
 
   useEffect(() => {
     if (!selectedFund) {
@@ -230,7 +271,7 @@ export default function FundIntelligenceDashboard() {
       .finally(() => setHoldingsLoading(false));
   }, [selectedFund, selectedHoldingsDate]);
 
-  const currentFund = funds.find((item) => item.code === selectedFund) ?? null;
+  const currentFund = filteredFunds.find((item) => item.code === selectedFund) ?? null;
   const chartSeries = useMemo(
     () => (navPayload ? filterSeriesByRange(toChartSeries(navPayload.data), range) : []),
     [navPayload, range],
@@ -310,7 +351,7 @@ export default function FundIntelligenceDashboard() {
   }, [currentFund, funds]);
   const suggestedFunds = useMemo(
     () =>
-      funds
+      filteredFunds
         .filter((fund) => fund.point_count > 60)
         .sort((left, right) => {
           const quarterDiff =
@@ -322,7 +363,7 @@ export default function FundIntelligenceDashboard() {
           return (right.monthly_change_percent ?? -Infinity) - (left.monthly_change_percent ?? -Infinity);
         })
         .slice(0, 3),
-    [funds],
+    [filteredFunds],
   );
 
   function handleSelectFund(fundCode: string) {
@@ -365,8 +406,12 @@ export default function FundIntelligenceDashboard() {
           <div className="grid gap-4 md:grid-cols-2">
             <MetricCard
               label="Quỹ đang theo dõi"
-              value={String(funds.length)}
-              detail="Danh mục đã mở rộng cho SSIAM, Dragon Capital và VinaCapital."
+              value={String(filteredFunds.length)}
+              detail={
+                filteredFunds.length === funds.length
+                  ? "Danh mục đã mở rộng cho SSIAM, Dragon Capital và VinaCapital."
+                  : `Đang lọc ${filteredFunds.length}/${funds.length} quỹ theo tiêu chí hiện tại.`
+              }
             />
             <MetricCard
               label="Quỹ đang chọn"
@@ -401,41 +446,51 @@ export default function FundIntelligenceDashboard() {
               3 quỹ đang có định hướng dữ liệu tốt trong thị trường hiện tại
             </h2>
           </div>
+          <div className="hidden rounded-full border border-outline-variant/60 bg-surface-container-low px-4 py-2 text-sm text-on-surface-variant lg:inline-flex">
+            {selectedCompany === "all" ? "Tất cả công ty" : selectedCompany} ·{" "}
+            {formatStrategyFilterLabel(selectedStrategy)}
+          </div>
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          {suggestedFunds.map((fund) => (
-            <button
-              key={fund.code}
-              type="button"
-              onClick={() => handleSelectFund(fund.code)}
-              className="rounded-[1.5rem] border border-outline-variant/40 bg-surface-container-low p-4 text-left transition hover:border-primary/40 hover:bg-white"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-bold text-on-surface">{fund.code}</div>
-                  <div className="mt-1 text-xs uppercase tracking-[0.16em] text-on-surface-variant">
-                    {fund.company}
+          {suggestedFunds.length > 0 ? (
+            suggestedFunds.map((fund) => (
+              <button
+                key={fund.code}
+                type="button"
+                onClick={() => handleSelectFund(fund.code)}
+                className="rounded-[1.5rem] border border-outline-variant/40 bg-surface-container-low p-4 text-left transition hover:border-primary/40 hover:bg-white"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-bold text-on-surface">{fund.code}</div>
+                    <div className="mt-1 text-xs uppercase tracking-[0.16em] text-on-surface-variant">
+                      {fund.company}
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                    1 quý {formatPercent(fund.quarterly_change_percent ?? null)}
+                  </span>
+                </div>
+                <div className="mt-4 text-lg font-extrabold text-on-surface">{fund.name}</div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-2xl bg-white px-3 py-2">
+                    <div className="text-xs text-on-surface-variant">Biến động 1 tháng</div>
+                    <div className="mt-1 font-semibold text-on-surface">
+                      {formatPercent(fund.monthly_change_percent ?? null)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-white px-3 py-2">
+                    <div className="text-xs text-on-surface-variant">Điểm NAV</div>
+                    <div className="mt-1 font-semibold text-on-surface">{fund.point_count}</div>
                   </div>
                 </div>
-                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                  1 quý {formatPercent(fund.quarterly_change_percent ?? null)}
-                </span>
-              </div>
-              <div className="mt-4 text-lg font-extrabold text-on-surface">{fund.name}</div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-2xl bg-white px-3 py-2">
-                  <div className="text-xs text-on-surface-variant">Biến động 1 tháng</div>
-                  <div className="mt-1 font-semibold text-on-surface">
-                    {formatPercent(fund.monthly_change_percent ?? null)}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-white px-3 py-2">
-                  <div className="text-xs text-on-surface-variant">Điểm NAV</div>
-                  <div className="mt-1 font-semibold text-on-surface">{fund.point_count}</div>
-                </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            ))
+          ) : (
+            <div className="rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-5 py-6 text-sm leading-7 text-on-surface-variant lg:col-span-3">
+              Chưa có quỹ nào đạt ngưỡng gợi ý trong tập lọc hiện tại. Hãy đổi công ty hoặc nhóm chiến lược để mở rộng danh mục.
+            </div>
+          )}
         </div>
       </section>
 
@@ -453,23 +508,65 @@ export default function FundIntelligenceDashboard() {
                 ? "Trên mobile, bấm vào từng quỹ để mở khu vực biểu đồ, lịch sử NAV, nhận định và danh mục."
                 : "Các quỹ chưa có nguồn dữ liệu sẽ được đẩy xuống cuối và hiển thị trạng thái rõ ràng."}
             </p>
+            <div className="mb-4 grid gap-3">
+              <label className="grid gap-1 text-sm">
+                <span className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                  Công ty quản lý quỹ
+                </span>
+                <select
+                  value={selectedCompany}
+                  onChange={(event) => setSelectedCompany(event.target.value)}
+                  className="rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"
+                >
+                  {companyOptions.map((company) => (
+                    <option key={company} value={company}>
+                      {company === "all" ? "Tất cả công ty" : company}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                  Nhóm chiến lược
+                </span>
+                <select
+                  value={selectedStrategy}
+                  onChange={(event) => setSelectedStrategy(event.target.value as StrategyFilter)}
+                  className="rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"
+                >
+                  <option value="all">{formatStrategyFilterLabel("all")}</option>
+                  <option value="equity">{formatStrategyFilterLabel("equity")}</option>
+                  <option value="bond">{formatStrategyFilterLabel("bond")}</option>
+                  <option value="balanced">{formatStrategyFilterLabel("balanced")}</option>
+                </select>
+              </label>
+              <div className="rounded-[1rem] border border-outline-variant/50 bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
+                Đang hiển thị <span className="font-semibold text-on-surface">{filteredFunds.length}</span> quỹ trong bộ lọc hiện tại.
+              </div>
+            </div>
             <div className="space-y-3">
-              {funds.map((fund) => (
-                <FundCard
-                  key={fund.code}
-                  fundCode={fund.code}
-                  fundName={fund.name}
-                  company={fund.company}
-                  category={fund.category}
-                  nav={fund.nav}
-                  navDate={fund.nav_date}
-                  changePercent={fund.daily_change_percent}
-                  pointCount={fund.point_count}
-                  dataIssue={fund.data_issue}
-                  isActive={fund.code === selectedFund}
-                  onClick={() => handleSelectFund(fund.code)}
-                />
-              ))}
+              {filteredFunds.length > 0 ? (
+                filteredFunds.map((fund) => (
+                  <FundCard
+                    key={fund.code}
+                    fundCode={fund.code}
+                    fundName={fund.name}
+                    company={fund.company}
+                    category={fund.category}
+                    nav={fund.nav}
+                    navDate={fund.nav_date}
+                    changePercent={fund.daily_change_percent}
+                    pointCount={fund.point_count}
+                    dataIssue={fund.data_issue}
+                    isActive={fund.code === selectedFund}
+                    onClick={() => handleSelectFund(fund.code)}
+                  />
+                ))
+              ) : (
+                <div className="rounded-[1.4rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-4 py-5 text-sm leading-7 text-on-surface-variant">
+                  Không có quỹ nào khớp với bộ lọc này. Hãy đổi công ty hoặc nhóm chiến lược.
+                </div>
+              )}
             </div>
           </div>
         </aside>
