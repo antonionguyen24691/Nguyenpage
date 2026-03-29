@@ -29,6 +29,11 @@ export type HoldingsComparisonRow = {
   stock_code: string;
   weights: Array<number | null>;
   changeVsPrevious: number | null;
+  currentPrice: number | null;
+  currentPriceDate: string | null;
+  monthAgoPrice: number | null;
+  monthAgoPriceDate: string | null;
+  monthChangePercent: number | null;
 };
 
 const RANGE_IN_DAYS: Record<string, number> = {
@@ -320,6 +325,11 @@ export function buildHoldingsComparison(
         stock_code: code,
         weights,
         changeVsPrevious,
+        currentPrice: null,
+        currentPriceDate: null,
+        monthAgoPrice: null,
+        monthAgoPriceDate: null,
+        monthChangePercent: null,
       } satisfies HoldingsComparisonRow;
     })
     .sort((left, right) => (right.weights[0] ?? -1) - (left.weights[0] ?? -1));
