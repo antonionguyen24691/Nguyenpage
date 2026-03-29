@@ -57,8 +57,8 @@ export const defaultHomeConfig: HomeConfig = {
       icon: "credit_card",
       url: "/dang-ky",
       tags: [
-        { label: "Tài khoản Thanh toán", url: "/dang-ky" },
-        { label: "Mở Hộ Kinh Doanh", url: "/dang-ky" },
+        { label: "Mở tài khoản Cá nhân", url: "/dang-ky" },
+        { label: "Mở HKD", url: "/dang-ky" },
       ],
     },
     {

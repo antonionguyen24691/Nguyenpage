@@ -1,0 +1,264 @@
+{
+  "home": {
+    "bankingLabel": "Nghiệp vụ cốt lõi",
+    "bankingTitle": "Dịch vụ Tài chính & Ngân hàng",
+    "bankingDesc": "Giải pháp tài chính toàn diện, bảo mật và tối ưu hóa dòng vốn cho Cá nhân & Doanh nghiệp.",
+    "bankingViewAllText": "Xem tất cả dịch vụ",
+    "bankingViewAllUrl": "/service/bank",
+    "bankingCards": [
+      {
+        "title": "Tài khoản & Hộ kinh doanh",
+        "desc": "Mở tài khoản thanh toán số đẹp, tài khoản doanh nghiệp và đăng ký Hộ kinh doanh siêu tốc với thủ tục 100% online.",
+        "icon": "credit_card",
+        "url": "/dang-ky",
+        "tags": [
+          {
+            "label": "Mở tài khoản Cá nhân",
+            "url": "/dang-ky"
+          },
+          {
+            "label": "Mở HKD",
+            "url": "/dang-ky"
+          }
+        ]
+      },
+      {
+        "title": "Dịch vụ Tiền gửi",
+        "desc": "Giải pháp tiết kiệm linh hoạt, an toàn với lãi suất cạnh tranh, tối ưu hóa nguồn tiền nhàn rỗi.",
+        "icon": "savings",
+        "url": "/service/bank"
+      },
+      {
+        "title": "Tín dụng & Cho vay",
+        "desc": "Hỗ trợ vay tiêu dùng, vay mua nhà, vay vốn kinh doanh với hạn mức cao và thời gian giải ngân nhanh chóng.",
+        "icon": "payments",
+        "url": "/service/bank"
+      },
+      {
+        "title": "Bảo hiểm & Đầu tư Tài chính",
+        "desc": "Bảo vệ rủi ro và gia tăng tài sản bền vững thông qua các chứng chỉ quỹ linh hoạt, trái phiếu và gói bảo hiểm từ các đối tác hàng đầu.",
+        "icon": "trending_up",
+        "url": "/service/bank"
+      }
+    ],
+    "saasLabel": "Giải pháp Công nghệ",
+    "saasTitle": "Mở rộng bằng",
+    "saasTitleHighlight": "Phần mềm (SaaS)",
+    "saasDesc": "Vượt khỏi giới hạn tài chính truyền thống. Chúng tôi thiết kế và vận hành hệ thống phần mềm chuyên biệt, giúp số hóa hoàn toàn mô hình kinh doanh của bạn.",
+    "saasCards": [
+      {
+        "title": "Tạo App SaaS",
+        "desc": "Phát triển phần mềm theo mô hình Đăng ký (Subscription) cho startup và SMEs.",
+        "icon": "app_promo",
+        "url": "/service/saas",
+        "linkText": "Khám phá"
+      },
+      {
+        "title": "Quản lý Nhà trọ",
+        "desc": "App cho thuê và quản lý phòng trọ. Tự động thu tiền điện nước, xuất hóa đơn.",
+        "icon": "real_estate_agent",
+        "url": "/service/rental",
+        "linkText": "Khám phá"
+      },
+      {
+        "title": "Hỗ trợ Bán hàng",
+        "desc": "Phần mềm POS bán lẻ đa kênh, đồng bộ kho hàng và tích hợp thanh toán QR CODE.",
+        "icon": "storefront",
+        "url": "/service/pos",
+        "linkText": "Khám phá"
+      },
+      {
+        "title": "Tổng hợp Kế toán",
+        "desc": "Nền tảng báo cáo tài chính AI. Phân loại thu chi tự động nhờ kết nối Open Banking trực tiếp.",
+        "icon": "account_balance_wallet",
+        "url": "/service/accounting",
+        "linkText": "Khám phá"
+      }
+    ],
+    "dynamicImage": "https://lh3.googleusercontent.com/aida-public/AB6AXuDYaZbu7UmAZa2LD6WTw5O3wtSYNGFYdmBcLdXWDq-S5J7bXCcpnyrMBjV0TWKmUVCBudqh985acGrMu05Qh9HqTuhxePqkXFmMkzynnoCcKAo2bPC8qr9FtXVEL5Tz2qLin5cHAy0_PW0xRNjfMM1KKOph6oALHErQRayLYX8Mgltu_c0DY0k5imGREcVfiLKVm0hv9JQ0rIgkSTi7EiKrTQOtoD78nPHW3C-ckxzXUvaVBIQUy52BZBOKM6_bRpTT4MNbWK-OggU",
+    "dynamicTitle": "Tính chính xác tuyệt đối của",
+    "dynamicTitleHighlight": "Kiến trúc Sổ cái",
+    "dynamicDesc": "Mỗi dòng mã và mỗi giao dịch tại Nguyen Page đều được xây dựng trên nguyên tắc minh bạch. Chúng tôi loại bỏ sự phức tạp không cần thiết để mang lại một giao diện biên tập cao cấp, nơi dữ liệu của bạn thực sự biết nói.",
+    "dynamicFeatures": [
+      {
+        "icon": "speed",
+        "title": "Tốc độ vượt trội",
+        "desc": "Hệ thống xử lý hàng nghìn giao dịch mỗi giây trên hạ tầng đám mây Azure."
+      },
+      {
+        "icon": "architecture",
+        "title": "Cấu trúc vững chãi",
+        "desc": "Nền tảng được thiết kế với các lớp bảo mật đa tầng, chống lại mọi rủi ro."
+      }
+    ],
+    "ctaTitle": "Sẵn sàng để kiến tạo tương lai tài chính?",
+    "ctaDesc": "Đăng ký tài khoản doanh nghiệp ngay hôm nay và nhận gói SaaS Starter miễn phí trong 12 tháng đầu tiên.",
+    "ctaButtonText": "Bắt đầu đăng ký ngay",
+    "ctaButtonUrl": "/dang-ky"
+  },
+  "pages": [
+    {
+      "id": "home-seed",
+      "title": "Trang chủ",
+      "slug": "/",
+      "status": "published",
+      "views": "12.5k",
+      "blocks": []
+    },
+    {
+      "id": "register-seed",
+      "title": "Đăng ký Dịch vụ",
+      "slug": "/dang-ky",
+      "status": "published",
+      "views": "3.2k",
+      "blocks": []
+    },
+    {
+      "id": "bank-seed",
+      "title": "Dịch vụ Tài chính",
+      "slug": "/service/bank",
+      "status": "published",
+      "views": "3.4k",
+      "blocks": [
+        {
+          "id": "bank-hero",
+          "type": "hero",
+          "content": {
+            "title": "Dịch vụ tài chính được trình bày rõ, gọn và chốt nhanh hơn",
+            "subtitle": "Page này đã được seed để admin có thể sửa thông điệp, CTA và bố cục mà không phải dựng lại từ đầu.",
+            "cta": "Đăng ký nhận tư vấn",
+            "ctaUrl": "/dang-ky",
+            "bgImage": "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1400&q=80"
+          }
+        },
+        {
+          "id": "bank-grid",
+          "type": "features",
+          "content": [
+            {
+              "title": "Tài khoản Cá nhân",
+              "desc": "Khối nội dung mẫu để trình bày mở tài khoản cá nhân, onboarding và CTA dẫn về form đăng ký.",
+              "ctaText": "Tư vấn ngay",
+              "url": "/dang-ky"
+            },
+            {
+              "title": "Hộ Kinh Doanh",
+              "desc": "Khối nội dung mẫu cho HKD, giấy tờ, quy trình và lợi ích khi triển khai nhanh từ admin.",
+              "ctaText": "Mở HKD",
+              "url": "/dang-ky"
+            },
+            {
+              "title": "Tiền gửi, tín dụng, bảo hiểm",
+              "desc": "Card tổng hợp để admin đổi thông điệp, nhóm sản phẩm hoặc CTA theo từng chiến dịch.",
+              "ctaText": "Mở admin",
+              "url": "/admin"
+            }
+          ]
+        },
+        {
+          "id": "bank-copy",
+          "type": "text",
+          "content": "Đây là page seed cho dịch vụ tài chính. Bạn có thể tiếp tục chia nhỏ khối nội dung, đổi CTA và cấu trúc ngay trong Page Builder."
+        },
+        {
+          "id": "bank-button",
+          "type": "button",
+          "content": {
+            "text": "Quay về landing page",
+            "url": "/"
+          }
+        }
+      ]
+    },
+    {
+      "id": "saas-seed",
+      "title": "Giải pháp SaaS",
+      "slug": "/service/saas",
+      "status": "published",
+      "views": "2.1k",
+      "blocks": [
+        {
+          "id": "saas-hero",
+          "type": "hero",
+          "content": {
+            "title": "Bộ khung page SaaS để chỉnh sửa theo từng mô hình kinh doanh",
+            "subtitle": "Dùng chung page builder với page con giúp việc mở rộng sang nhiều trang nhất quán hơn và không bị lệch giao diện.",
+            "cta": "Yêu cầu demo",
+            "ctaUrl": "/dang-ky",
+            "bgImage": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1400&q=80"
+          }
+        },
+        {
+          "id": "saas-grid",
+          "type": "features",
+          "content": [
+            {
+              "title": "SaaS cho phòng trọ",
+              "desc": "Khối giới thiệu use case cho thuê, chỉ số, hóa đơn và thông báo.",
+              "ctaText": "Chỉnh sửa",
+              "url": "/admin"
+            },
+            {
+              "title": "POS và bán hàng",
+              "desc": "Khối mẫu để thay thế thành use case bán lẻ, chuỗi cửa hàng hoặc quản trị điểm bán.",
+              "ctaText": "Mở builder",
+              "url": "/admin"
+            },
+            {
+              "title": "Accounting / dashboard",
+              "desc": "Khối mẫu cho hệ thống báo cáo, accounting AI và dashboard vận hành.",
+              "ctaText": "Xem admin",
+              "url": "/admin"
+            }
+          ]
+        },
+        {
+          "id": "saas-columns",
+          "type": "columns",
+          "content": {
+            "left": "Cấu trúc page này dùng bộ block chung nên dễ scale. Bạn có thể copy page, đổi slug và sửa từng block để tạo landing riêng cho mỗi line sản phẩm.",
+            "right": "Vì frontend đã đọc trực tiếp từ pages config, admin không còn là nơi lưu dữ liệu cho có nữa. Nó đã trở thành nguồn render thật sự cho page con."
+          }
+        },
+        {
+          "id": "saas-button",
+          "type": "button",
+          "content": {
+            "text": "Mở CMS để chỉnh sửa",
+            "url": "/admin"
+          }
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "id": 1,
+      "label": "Trang chủ",
+      "url": "/",
+      "order": 1,
+      "visible": true
+    },
+    {
+      "id": 2,
+      "label": "Dịch vụ",
+      "url": "/service/bank",
+      "order": 2,
+      "visible": true
+    },
+    {
+      "id": 3,
+      "label": "Hỗ trợ",
+      "url": "/dang-ky",
+      "order": 3,
+      "visible": true
+    },
+    {
+      "id": 4,
+      "label": "Thông tin quỹ",
+      "url": "/fund-intelligence",
+      "order": 4,
+      "visible": true
+    }
+  ]
+}

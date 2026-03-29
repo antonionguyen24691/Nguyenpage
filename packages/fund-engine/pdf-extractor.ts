@@ -1,86 +1,432 @@
-// Dynamic import inside function instead
-import * as cheerio from 'cheerio';
-import { extractHoldingsFromText } from '../ai/holdings-extraction';
-import { db } from '../db';
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import * as cheerio from "cheerio";
+import { fundCatalog } from "@/lib/fundCatalog";
+import { persistFundData } from "@/lib/fundDataStore";
+import { extractHoldingsFromText } from "../ai/holdings-extraction";
 
-/**
- * Hàm tìm link PDF báo cáo mới nhất của quỹ (Giả lập logic tìm HTML).
- * Trong thực tế mỗi quỹ sẽ có 1 pattern HTML riêng.
- */
-async function findLatestFactsheetUrl(fundCode: string): Promise<string | null> {
-  try {
-    // Ví dụ mẫu với VinaCapital. Lên trang tài liệu của họ tìm link PDF có chữ 'Factsheet'
-    // Nếu fundCode là VEOF, v.v...
-    const docUrl = 'https://vinacapital.com/vi/tai-lieu-quy/';
-    const res = await fetch(docUrl, { cache: 'no-store' });
-    const html = await res.text();
-    const $ = cheerio.load(html);
+type HoldingRow = {
+  fund_code: string;
+  stock_code: string;
+  weight: number;
+  date: string;
+};
 
-    let pdfLink: string | null = null;
-    $('a').each((i, el) => {
-        const href = $(el).attr('href');
-        if (href && href.toLowerCase().includes('.pdf') && href.includes(fundCode)) {
-            pdfLink = href;
-        }
-    });
+type HoldingsSyncResult = {
+  success: boolean;
+  fund: string;
+  periods: string[];
+  source: string;
+  holdings_extracted: number;
+  note?: string;
+  error?: string;
+};
 
-    // Cung cấp một Mock PDF an toàn cho mục đích minh họa nếu Crawler không bắt được HTML tĩnh
-    // Để gọi qua API OpenAI test hoạt động
-    return pdfLink || `https://vinacapital.com/wp-content/uploads/2024/02/${fundCode}-Factsheet-VN.pdf`;
-  } catch (error) {
-    console.error(`Error finding PDF for ${fundCode}:`, error);
-    return null;
-  }
+const SSIAM_PAGES: Record<string, string> = {
+  VLGF: "https://ssiam.com.vn/en/ssiam/fund-information-vlgf",
+  SSISCA: "https://ssiam.com.vn/en/fund-information-ssi-sca",
+  SSIBF: "https://ssiam.com.vn/en/ssiam/fund-information-ssibf",
+  "SSI-EF": "https://ssiam.com.vn/en/ssiam/fund-information-ssief",
+};
+
+const DRAGON_CODES = new Set(["DCDS", "DCDE", "DCBF", "DCIP"]);
+const VINA_CODES = new Set(["VEOF", "VESAF", "VFF", "VIBF", "VDEF", "VLBF"]);
+const MAX_HISTORICAL_PERIODS = 4;
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+const PDF_WORKER_URL = pathToFileURL(
+  path.join(process.cwd(), "node_modules", "pdf-parse", "dist", "pdf-parse", "web", "pdf.worker.min.mjs"),
+).href;
+
+function monthStart(date: Date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
 
-/**
- * Quy trình chuẩn bị Tải PDF -> Đọc Text -> Đưa AI bóc tách -> Lưu Database
- */
-export async function processFundHoldings(fundCode: string) {
-  try {
-    const pdfUrl = await findLatestFactsheetUrl(fundCode);
-    if (!pdfUrl) return { success: false, error: 'No PDF found' };
+function parseMonthDate(value: string) {
+  const normalized = value
+    .replace(/\u00a0/g, " ")
+    .replace(/\./g, "/")
+    .replace(/\s+/g, " ")
+    .trim();
 
-    console.log(`Downloading PDF for ${fundCode} from ${pdfUrl}`);
-    const response = await fetch(pdfUrl);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+  const dayMonthYear = normalized.match(/(\d{1,2})\/(\d{1,2})\/(20\d{2})/);
+  if (dayMonthYear) {
+    return monthStart(
+      new Date(Date.UTC(Number(dayMonthYear[3]), Number(dayMonthYear[2]) - 1, Number(dayMonthYear[1]))),
+    );
+  }
 
-    console.log(`Parsing PDF for ${fundCode}...`);
-    const pdfParse = require('pdf-parse');
-    const pdfData = await pdfParse(buffer);
+  const monthYearSlash = normalized.match(/(\d{1,2})\/(20\d{2})/);
+  if (monthYearSlash) {
+    return `${monthYearSlash[2]}-${String(Number(monthYearSlash[1])).padStart(2, "0")}-01`;
+  }
 
-    console.log(`AI Extracting holdings for ${fundCode}...`);
-    // Cắt ngày ngày 1 đầu tháng hiện tại
-    const dateObj = new Date();
-    const reportDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-01`; 
-    
-    const holdings = await extractHoldingsFromText(fundCode, pdfData.text, reportDate);
+  const monthYearDash = normalized.match(/(\d{1,2})-(20\d{2})/);
+  if (monthYearDash) {
+    return `${monthYearDash[2]}-${String(Number(monthYearDash[1])).padStart(2, "0")}-01`;
+  }
 
-    console.log(`Saving ${holdings.length} holdings to DB for ${fundCode}...`);
-    // Lưu vào Supabase Database
-    for (const h of holdings) {
-        await db.from('fund_holdings').upsert({
+  const englishMonth = normalized.match(
+    /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i,
+  );
+  if (englishMonth) {
+    const months = [
+      "january",
+      "february",
+      "march",
+      "april",
+      "may",
+      "june",
+      "july",
+      "august",
+      "september",
+      "october",
+      "november",
+      "december",
+    ];
+    const monthIndex = months.indexOf(englishMonth[1].toLowerCase());
+    if (monthIndex >= 0) {
+      return `${englishMonth[2]}-${String(monthIndex + 1).padStart(2, "0")}-01`;
+    }
+  }
+
+  return null;
+}
+
+function parseWeight(value: string) {
+  const normalized = value.replace(/[^0-9,.-]/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", ".");
+  const numeric = Number(normalized);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function absoluteUrl(url: string, base: string) {
+  return new URL(url, base).toString();
+}
+
+function dedupeHoldings(rows: HoldingRow[]) {
+  const unique = new Map<string, HoldingRow>();
+  for (const row of rows) {
+    unique.set(`${row.fund_code}::${row.stock_code}::${row.date}`, row);
+  }
+  return [...unique.values()].sort(
+    (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime(),
+  );
+}
+
+async function fetchHtml(url: string) {
+  const response = await fetch(url, {
+    headers: { "User-Agent": USER_AGENT },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for ${url}`);
+  }
+  return response.text();
+}
+
+async function extractHoldingsFromPdfUrl(fundCode: string, pdfUrl: string, reportDate: string) {
+  const response = await fetch(pdfUrl, {
+    headers: { "User-Agent": USER_AGENT },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for ${pdfUrl}`);
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const { PDFParse } = await import("pdf-parse");
+  PDFParse.setWorker(PDF_WORKER_URL);
+  const parser = new PDFParse({ data: buffer });
+  const pdfData = await parser.getText();
+  await parser.destroy();
+  const holdings = await extractHoldingsFromText(fundCode, pdfData.text, reportDate);
+  return holdings
+    .map((item: { stock_code: string; weight: number }) => ({
+      fund_code: fundCode,
+      stock_code: item.stock_code.trim().toUpperCase(),
+      weight: Number(item.weight),
+      date: reportDate,
+    }))
+    .filter((item: HoldingRow) => item.stock_code && Number.isFinite(item.weight));
+}
+
+async function collectSSIAMHoldings(fundCode: string): Promise<HoldingsSyncResult & { rows: HoldingRow[] }> {
+  const pageUrl = SSIAM_PAGES[fundCode];
+  if (!pageUrl) {
+    return {
+      success: false,
+      fund: fundCode,
+      periods: [],
+      source: "SSIAM",
+      holdings_extracted: 0,
+      error: "No official SSIAM page mapping",
+      rows: [],
+    };
+  }
+
+  const html = await fetchHtml(pageUrl);
+  const $ = cheerio.load(html);
+  const rows: HoldingRow[] = [];
+  const periods = new Set<string>();
+  const notes: string[] = [];
+
+  const holdingsDateText = $(".assetDistribution__content__note").first().text().trim();
+  const currentDate = parseMonthDate(holdingsDateText);
+  if (currentDate) {
+    $(".assetDistribution_table table tbody tr").each((_, element) => {
+      const cells = $(element)
+        .find("td")
+        .map((__, cell) => $(cell).text().trim())
+        .get();
+      if (cells.length >= 4) {
+        const stockCode = cells[0].trim().toUpperCase();
+        const weight = parseWeight(cells[3]);
+        if (stockCode && weight !== null) {
+          rows.push({
             fund_code: fundCode,
-            stock_code: h.stock_code,
-            weight: h.weight,
-            date: reportDate
-        }, { onConflict: 'fund_code,stock_code,date', ignoreDuplicates: false });
+            stock_code: stockCode,
+            weight,
+            date: currentDate,
+          });
+          periods.add(currentDate);
+        }
+      }
+    });
+  }
+
+  const documentLinks = $(".formDocument__document_item")
+    .map((_, element) => {
+      const title = $(element).find(".formDocument__document_title").text().trim();
+      const href = $(element).find('a[title="Download"]').attr("href");
+      return { title, href };
+    })
+    .get()
+    .filter((item) => item.href && /monthly report/i.test(item.title))
+    .slice(0, MAX_HISTORICAL_PERIODS);
+
+  for (const document of documentLinks) {
+    const reportDate = parseMonthDate(document.title);
+    if (!document.href || !reportDate || periods.has(reportDate)) {
+      continue;
+    }
+    try {
+      const pdfRows = await extractHoldingsFromPdfUrl(
+        fundCode,
+        absoluteUrl(document.href, pageUrl),
+        reportDate,
+      );
+      pdfRows.forEach((row: HoldingRow) => rows.push(row));
+      periods.add(reportDate);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown PDF extraction error";
+      notes.push(`${reportDate}: ${message}`);
+    }
+  }
+
+  return {
+    success: rows.length > 0,
+    fund: fundCode,
+    periods: [...periods].sort((left, right) => new Date(right).getTime() - new Date(left).getTime()),
+    source: "SSIAM official page + monthly reports",
+    holdings_extracted: rows.length,
+    note: notes.length > 0 ? notes.join(" | ") : undefined,
+    rows: dedupeHoldings(rows),
+  };
+}
+
+function parseDragonArticleDate(url: string, html: string) {
+  const fromUrl = url.match(/thang-(\d{1,2})[.-](20\d{2})/i);
+  if (fromUrl) {
+    return `${fromUrl[2]}-${String(Number(fromUrl[1])).padStart(2, "0")}-01`;
+  }
+
+  const fromHeading = html.match(/tháng\s+(\d{1,2})[./-](20\d{2})/i);
+  if (fromHeading) {
+    return `${fromHeading[2]}-${String(Number(fromHeading[1])).padStart(2, "0")}-01`;
+  }
+
+  return null;
+}
+
+function parseDragonHoldingsTable(fundCode: string, html: string, reportDate: string) {
+  const $ = cheerio.load(html);
+  const rows: HoldingRow[] = [];
+
+  $("table").each((_, table) => {
+    const headerText = $(table).find("th").map((__, th) => $(th).text().trim()).get().join(" | ");
+    if (!/Mã Cổ Phiếu|Ticker/i.test(headerText) || !/% NAV|Tỷ trọng/i.test(headerText)) {
+      return;
     }
 
-    return { success: true, fund: fundCode, holdings_extracted: holdings.length };
-  } catch (error: any) {
-    console.error(`Failed to process holdings for ${fundCode}:`, error);
-    return { success: false, error: error.message };
+    $(table)
+      .find("tbody tr")
+      .each((__, element) => {
+        const cells = $(element)
+          .find("td")
+          .map((___, cell) => $(cell).text().trim())
+          .get();
+        if (cells.length >= 3) {
+          const stockCode = cells[0].replace(/\s+/g, "").toUpperCase();
+          const weight = parseWeight(cells[cells.length - 1]);
+          if (stockCode && weight !== null) {
+            rows.push({
+              fund_code: fundCode,
+              stock_code: stockCode,
+              weight,
+              date: reportDate,
+            });
+          }
+        }
+      });
+  });
+
+  return dedupeHoldings(rows);
+}
+
+function extractDragonPdfUrl(html: string) {
+  const match = html.match(/https:\/\/[^"' ]+\.pdf/gi);
+  return match?.[0] ?? null;
+}
+
+async function collectDragonHoldings(fundCode: string): Promise<HoldingsSyncResult & { rows: HoldingRow[] }> {
+  const sitemap = await fetchHtml("https://dautu.dragoncapital.com.vn/sitemap.xml");
+  const urls = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)]
+    .map((match) => match[1])
+    .filter(
+      (url) =>
+        /tin-tuc\//.test(url) &&
+        new RegExp(fundCode, "i").test(url) &&
+        /(cap-nhat-danh-muc|bao-cao-hoat-dong)/i.test(url),
+    )
+    .sort((left, right) => {
+      const leftMatch = left.match(/thang-(\d{1,2})[.-](20\d{2})/i);
+      const rightMatch = right.match(/thang-(\d{1,2})[.-](20\d{2})/i);
+      const leftTime = leftMatch
+        ? new Date(Date.UTC(Number(leftMatch[2]), Number(leftMatch[1]) - 1, 1)).getTime()
+        : 0;
+      const rightTime = rightMatch
+        ? new Date(Date.UTC(Number(rightMatch[2]), Number(rightMatch[1]) - 1, 1)).getTime()
+        : 0;
+      return rightTime - leftTime;
+    });
+
+  const rows: HoldingRow[] = [];
+  const periods = new Set<string>();
+
+  for (const url of urls) {
+    const html = await fetchHtml(url);
+    const reportDate = parseDragonArticleDate(url, html);
+    if (!reportDate || periods.has(reportDate)) {
+      continue;
+    }
+    let articleRows = parseDragonHoldingsTable(fundCode, html, reportDate);
+    if (articleRows.length === 0) {
+      const pdfUrl = extractDragonPdfUrl(html);
+      if (pdfUrl) {
+        try {
+          articleRows = await extractHoldingsFromPdfUrl(fundCode, pdfUrl, reportDate);
+        } catch {
+          articleRows = [];
+        }
+      }
+    }
+    if (articleRows.length > 0) {
+      articleRows.forEach((row) => rows.push(row));
+      periods.add(reportDate);
+    }
+    if (periods.size >= MAX_HISTORICAL_PERIODS) {
+      break;
+    }
+  }
+
+  return {
+    success: rows.length > 0,
+    fund: fundCode,
+    periods: [...periods].sort((left, right) => new Date(right).getTime() - new Date(left).getTime()),
+    source: "Dragon Capital sitemap + article holdings tables",
+    holdings_extracted: rows.length,
+    rows: dedupeHoldings(rows),
+  };
+}
+
+async function collectVinaHoldings(fundCode: string): Promise<HoldingsSyncResult & { rows: HoldingRow[] }> {
+  return {
+    success: false,
+    fund: fundCode,
+    periods: [],
+    source: "VinaCapital official",
+    holdings_extracted: 0,
+    note: "Official VinaCapital pages currently return Cloudflare 403 to this runtime. Existing local/DB holdings are kept as fallback.",
+    rows: [],
+  };
+}
+
+export async function processFundHoldings(fundCode: string) {
+  try {
+    if (SSIAM_PAGES[fundCode]) {
+      const result = await collectSSIAMHoldings(fundCode);
+      if (result.rows.length > 0) {
+        await persistFundData({
+          funds: fundCatalog.map((entry) => ({
+            code: entry.code,
+            name: entry.name,
+            company: entry.company,
+          })),
+          holdings: result.rows,
+        });
+      }
+      return result;
+    }
+
+    if (DRAGON_CODES.has(fundCode)) {
+      const result = await collectDragonHoldings(fundCode);
+      if (result.rows.length > 0) {
+        await persistFundData({
+          funds: fundCatalog.map((entry) => ({
+            code: entry.code,
+            name: entry.name,
+            company: entry.company,
+          })),
+          holdings: result.rows,
+        });
+      }
+      return result;
+    }
+
+    if (VINA_CODES.has(fundCode)) {
+      return collectVinaHoldings(fundCode);
+    }
+
+    return {
+      success: false,
+      fund: fundCode,
+      periods: [],
+      source: "unknown",
+      holdings_extracted: 0,
+      error: "No collector configured",
+      rows: [],
+    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return {
+      success: false,
+      fund: fundCode,
+      periods: [],
+      source: "collector",
+      holdings_extracted: 0,
+      error: message,
+      rows: [],
+    };
   }
 }
 
 export async function syncAllHoldings() {
-    // Chạy mẫu nghiệm thu 1 số quỹ chính
-    const results = [];
-    results.push(await processFundHoldings('VEOF'));
-    results.push(await processFundHoldings('VESAF'));
-    results.push(await processFundHoldings('DCBC'));
-    return results;
+  const targets = fundCatalog
+    .map((entry) => entry.code)
+    .filter((code) => SSIAM_PAGES[code] || DRAGON_CODES.has(code) || VINA_CODES.has(code));
+
+  const results = [];
+  for (const code of targets) {
+    results.push(await processFundHoldings(code));
+  }
+  return results;
 }

@@ -1,74 +1,89 @@
-import { NextResponse } from 'next/server';
-import { db } from '../../../packages/db';
-import { analyzeFund } from '../../../packages/ai/fund-analysis';
+import { NextResponse } from "next/server";
+import { getPeerFundCodes } from "@/lib/fundCatalog";
+import {
+  buildComparisonSeries,
+  calculateNavMetrics,
+  sortNavAscending,
+} from "@/lib/fundAnalytics";
+import { getFundDataset } from "@/lib/fundDataStore";
+import { analyzeFund } from "../../../packages/ai/fund-analysis";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const fundCode = searchParams.get('fund');
-    const days = parseInt(searchParams.get('days') || '90');
+    const fundCode = searchParams.get("fund");
+    const days = parseInt(searchParams.get("days") || "180", 10);
+    const compareList = searchParams
+      .get("compare")
+      ?.split(",")
+      .map((item) => item.trim().toUpperCase())
+      .filter(Boolean);
 
     if (!fundCode) {
       return NextResponse.json(
-        { success: false, error: 'Thiếu mã quỹ (fund parameter)' },
-        { status: 400 }
+        { success: false, error: "Thiếu mã quỹ (fund parameter)" },
+        { status: 400 },
       );
     }
 
-    // Lấy lịch sử NAV của quỹ cụ thể trong N ngày (Lấy cái mới nhất lên đầu)
-    const { data: navData, error: navError } = await db
-      .from('fund_nav')
-      .select('*')
-      .eq('fund_code', fundCode.toUpperCase())
-      .order('date', { ascending: false })
-      .limit(days);
+    const normalizedFundCode = fundCode.toUpperCase();
+    const dataset = await getFundDataset();
+    const fullHistory = sortNavAscending(
+      dataset.nav.filter((row) => row.fund_code === normalizedFundCode),
+    );
+    const navData = days > 0 ? fullHistory.slice(-days) : fullHistory;
 
-    if (navError) {
-      throw navError;
-    }
+    const holdingsDates = Array.from(
+      new Set(
+        dataset.holdings
+          .filter((row) => row.fund_code === normalizedFundCode)
+          .map((row) => row.date),
+      ),
+    ).sort((left, right) => new Date(right).getTime() - new Date(left).getTime());
 
-    // Lấy danh mục mới nhất làm bối cảnh cho AI phân tích
-    const { data: latestDateObj } = await db
-      .from('fund_holdings')
-      .select('date')
-      .eq('fund_code', fundCode.toUpperCase())
-      .order('date', { ascending: false })
-      .limit(1)
-      .single();
+    const latestHoldingsDate = holdingsDates[0] ?? null;
+    const topHoldings = latestHoldingsDate
+      ? dataset.holdings
+          .filter(
+            (row) => row.fund_code === normalizedFundCode && row.date === latestHoldingsDate,
+          )
+          .sort((left, right) => right.weight - left.weight)
+          .slice(0, 10)
+      : [];
 
-    let topHoldings: any[] = [];
-    if (latestDateObj?.date) {
-      const { data: holdingsData } = await db
-        .from('fund_holdings')
-        .select('stock_code, weight')
-        .eq('fund_code', fundCode.toUpperCase())
-        .eq('date', latestDateObj.date)
-        .order('weight', { ascending: false })
-        .limit(10);
-      
-      topHoldings = holdingsData || [];
-    }
+    const peerCodes = compareList?.length
+      ? compareList
+      : getPeerFundCodes(normalizedFundCode, 3);
+    const peers = Object.fromEntries(
+      peerCodes.map((code) => [
+        code,
+        dataset.nav.filter((row) => row.fund_code === code),
+      ]),
+    );
+    const comparison = buildComparisonSeries(navData, peers);
+    const metrics = calculateNavMetrics(navData);
 
-    // Chạy AI phân tích tự động dựa trên mảng data nav & holdings
     const analysis = await analyzeFund({
-      fundCode: fundCode.toUpperCase(),
-      navHistory: navData || [],
-      topHoldings: topHoldings
+      fundCode: normalizedFundCode,
+      navHistory: navData,
+      topHoldings,
+      peerComparison: comparison,
+      metrics,
     });
 
     return NextResponse.json({
       success: true,
-      fund: fundCode.toUpperCase(),
+      fund: normalizedFundCode,
       data: navData,
-      ai_insight: analysis
+      metrics,
+      comparison,
+      peerCodes,
+      ai_insight: analysis,
     });
-  } catch (error: any) {
-    console.error("API error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

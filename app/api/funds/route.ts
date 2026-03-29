@@ -1,56 +1,44 @@
-import { NextResponse } from 'next/server';
-import { db } from '../../../packages/db';
+import { NextResponse } from "next/server";
+import { getFundCatalogEntry } from "@/lib/fundCatalog";
+import { calculateChange, sortNavAscending } from "@/lib/fundAnalytics";
+import { getFundDataset } from "@/lib/fundDataStore";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    // Lấy danh sách các quỹ
-    const { data: funds, error } = await db
-      .from('funds')
-      .select('*')
-      .order('code');
+    const dataset = await getFundDataset();
 
-    if (error) {
-      throw error;
-    }
+    const results = dataset.funds.map((fund) => {
+      const history = sortNavAscending(
+        dataset.nav.filter((row) => row.fund_code === fund.code.toUpperCase()),
+      );
+      const latest = history.at(-1) ?? null;
+      const previous = history.length > 1 ? history.at(-2) ?? null : null;
+      const daily = calculateChange(
+        latest ? Number(latest.nav) : null,
+        previous ? Number(previous.nav) : null,
+      );
+      const catalog = getFundCatalogEntry(fund.code);
 
-    // Mảng lưu danh sách quỹ kèm NAV hiện tại
-    const results = [];
-
-    // Lấy top 1 NAV mới nhất cho từng quỹ
-    for (const fund of funds) {
-      const { data: navData, error: navError } = await db
-        .from('fund_nav')
-        .select('nav, date')
-        .eq('fund_code', fund.code)
-        .order('date', { ascending: false })
-        .limit(1)
-        .single();
-        
-      if (!navError && navData) {
-        results.push({
-          ...fund,
-          nav: navData.nav,
-          nav_date: navData.date
-        });
-      } else {
-        results.push({
-          ...fund,
-          nav: null,
-          nav_date: null
-        });
-      }
-    }
+      return {
+        ...fund,
+        company: catalog?.company ?? fund.company,
+        name: catalog?.name ?? fund.name,
+        category: catalog?.category ?? "equity",
+        nav: latest ? Number(latest.nav) : null,
+        nav_date: latest?.date ?? null,
+        daily_change_percent: daily.percent,
+        point_count: history.length,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      data: results
+      data: results,
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { type SitePageBlock } from "@/lib/sitePages";
+import { type SitePageBlock } from "@/lib/siteConfigDefaults";
 
 type HeroContent = {
   title?: string;

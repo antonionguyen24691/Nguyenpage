@@ -1,117 +1,146 @@
 "use client";
 
-import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, ISeriesApi, AreaSeries } from 'lightweight-charts';
-
-type ChartData = {
-  time: string;
-  value: number;
-};
+import React, { useEffect, useRef } from "react";
+import {
+  AreaSeries,
+  CandlestickSeries,
+  ColorType,
+  LineSeries,
+  createChart,
+} from "lightweight-charts";
+import type { CandlePoint, ChartPoint } from "@/lib/fundAnalytics";
 
 type FundChartProps = {
-  data: ChartData[];
+  data: ChartPoint[];
+  mode: "area" | "line" | "candles" | "heikin" | "compare";
+  comparisonSeries?: Array<{
+    code: string;
+    color: string;
+    data: ChartPoint[];
+  }>;
+  candles?: CandlePoint[];
 };
 
-// Helper function to convert 'YYYY-MM-DD' or ISO string to standard YYYY-MM-DD that lightweight-charts understands
-const formatTime = (timeStr: string) => {
-  return timeStr.substring(0, 10);
-};
+function formatTime(value: string) {
+  return value.slice(0, 10);
+}
 
-export default function FundChart({ data }: FundChartProps) {
+export default function FundChart({
+  data,
+  mode,
+  comparisonSeries = [],
+  candles = [],
+}: FundChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<any>(null);
-  const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
 
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (!chartContainerRef.current) {
+      return;
+    }
 
-    // Khởi tạo chart
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#6b7280', // neutral-500
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: "#5c6b7c",
       },
       width: chartContainerRef.current.clientWidth,
-      height: 400,
+      height: 420,
       grid: {
-        vertLines: { color: '#f3f4f6', style: 1 }, // dashed
-        horzLines: { color: '#f3f4f6', style: 1 }, // dashed
+        vertLines: { color: "rgba(135,149,168,0.18)" },
+        horzLines: { color: "rgba(135,149,168,0.18)" },
       },
       rightPriceScale: {
         borderVisible: false,
-        autoScale: true,
-        alignLabels: true,
       },
       timeScale: {
         borderVisible: false,
-        timeVisible: false,
       },
       crosshair: {
-        vertLine: {
-          color: '#9ca3af',
-          width: 1,
-          style: 3,
-        },
-        horzLine: {
-          color: '#9ca3af',
-          width: 1,
-          style: 3,
-        },
+        vertLine: { color: "rgba(31,77,183,0.35)" },
+        horzLine: { color: "rgba(31,77,183,0.35)" },
       },
     });
-    
-    chartRef.current = chart;
 
-    // Tính toán baseValue là mức thấp nhất để phần xanh (Area) không kéo dài tận mốc 0
-    // Ta set autoScale: true, và bottomColor trong suốt dần
-    const newSeries = chart.addSeries(AreaSeries, {
-      lineColor: '#4f46e5', // Indigo-600
-      topColor: 'rgba(79, 70, 229, 0.4)',
-      bottomColor: 'rgba(79, 70, 229, 0.0)',
-      lineWidth: 2,
-    });
-    seriesRef.current = newSeries;
+    if (mode === "compare") {
+      comparisonSeries.forEach((series) => {
+        const line = chart.addSeries(LineSeries, {
+          color: series.color,
+          lineWidth: 2,
+          priceFormat: {
+            type: "price",
+            precision: 2,
+            minMove: 0.01,
+          },
+        });
+        line.setData(
+          series.data.map((item) => ({
+            time: formatTime(item.time),
+            value: item.value,
+          })),
+        );
+      });
+    } else if (mode === "candles" || mode === "heikin") {
+      const series = chart.addSeries(CandlestickSeries, {
+        upColor: "#0c7a69",
+        downColor: "#c73a3a",
+        borderVisible: false,
+        wickUpColor: "#0c7a69",
+        wickDownColor: "#c73a3a",
+      });
+      series.setData(
+        candles.map((item) => ({
+          time: formatTime(item.time),
+          open: item.open,
+          high: item.high,
+          low: item.low,
+          close: item.close,
+        })),
+      );
+    } else if (mode === "line") {
+      const series = chart.addSeries(LineSeries, {
+        color: "#1f4db7",
+        lineWidth: 2,
+      });
+      series.setData(
+        data.map((item) => ({
+          time: formatTime(item.time),
+          value: item.value,
+        })),
+      );
+    } else {
+      const series = chart.addSeries(AreaSeries, {
+        lineColor: "#0c7a69",
+        topColor: "rgba(12,122,105,0.35)",
+        bottomColor: "rgba(12,122,105,0.02)",
+        lineWidth: 2,
+      });
+      series.setData(
+        data.map((item) => ({
+          time: formatTime(item.time),
+          value: item.value,
+        })),
+      );
+    }
+
+    chart.timeScale().fitContent();
 
     const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
       }
     };
-    window.addEventListener('resize', handleResize);
 
+    window.addEventListener("resize", handleResize);
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
       chart.remove();
     };
-  }, []);
-
-  // Cập nhật dữ liệu mỗi khi props.data thay đổi
-  useEffect(() => {
-    if (seriesRef.current && data.length > 0) {
-      // Sắp xếp dữ liệu từ cũ đến mới và format ngày
-      const formattedData = [...data]
-        .map(item => ({
-          time: formatTime(item.time),
-          value: item.value
-        }))
-        .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
-
-      // Loại bỏ các phần tử bị lặp timestamp (nếu có)
-      const uniqueData = formattedData.filter((item, index, self) => 
-        index === 0 || item.time !== self[index - 1].time
-      );
-
-      // Lightweight charts requires time property to be strictly ordered and unique
-      seriesRef.current.setData(uniqueData as any);
-      
-      // Cho chart tự động fit khung nhìn
-      setTimeout(() => {
-         chartRef.current?.timeScale().fitContent();
-      }, 50);
-    }
-  }, [data]);
+  }, [candles, comparisonSeries, data, mode]);
 
   return (
-    <div className="w-full h-[400px] border border-neutral-100 rounded-xl overflow-hidden bg-white shadow-sm p-4 relative" ref={chartContainerRef} />
+    <div
+      ref={chartContainerRef}
+      className="h-[420px] w-full overflow-hidden rounded-[1.5rem] border border-white/70 bg-[rgba(255,255,255,0.7)]"
+    />
   );
 }

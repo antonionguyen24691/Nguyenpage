@@ -3,7 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import HomeEditor from "@/components/HomeEditor";
-import { defaultSitePages, mergeWithDefaultSitePages } from "@/lib/sitePages";
+import {
+  defaultLinks,
+  defaultSitePages,
+  mergeWithDefaultSitePages,
+} from "@/lib/siteConfigDefaults";
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
 
@@ -77,12 +81,7 @@ export default function AdminDashboard() {
         else setPages(defaultSitePages);
 
         if (data.links) setLinks(data.links);
-        else setLinks([
-          { id: 1, label: "Trang chủ", url: "/", order: 1, visible: true },
-          { id: 2, label: "Dịch vụ", url: "/service/bank", order: 2, visible: true },
-          { id: 3, label: "Hỗ trợ", url: "/dang-ky", order: 3, visible: true },
-          { id: 4, label: "Thông tin quỹ", url: "/fund-intelligence", order: 4, visible: true },
-        ]);
+        else setLinks(defaultLinks);
 
         if (data.settings) setSystemSettings(data.settings);
         else setSystemSettings({

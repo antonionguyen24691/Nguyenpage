@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:supabase": "node scripts/sync-local-data-to-supabase.mjs"
   },
   "dependencies": {
     "@prisma/client": "^7.5.0",

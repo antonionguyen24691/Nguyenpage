@@ -1,6 +1,5 @@
 -- Schema cho Fund Intelligence Module
 
--- 1. Bảng lưu thông tin định danh các quỹ
 CREATE TABLE IF NOT EXISTS funds (
   id SERIAL PRIMARY KEY,
   code TEXT UNIQUE NOT NULL,
@@ -9,7 +8,6 @@ CREATE TABLE IF NOT EXISTS funds (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. Bảng lưu lịch sử NAV từng ngày của các quỹ
 CREATE TABLE IF NOT EXISTS fund_nav (
   id SERIAL PRIMARY KEY,
   fund_code TEXT NOT NULL REFERENCES funds(code),
@@ -17,10 +15,9 @@ CREATE TABLE IF NOT EXISTS fund_nav (
   date DATE NOT NULL,
   source TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  UNIQUE(fund_code, date) -- Đảm bảo không lưu trùng NAV của 1 quỹ trong cùng 1 ngày
+  UNIQUE (fund_code, date)
 );
 
--- 3. Bảng (Optional) lưu tỷ trọng cổ phiếu trong quỹ
 CREATE TABLE IF NOT EXISTS fund_holdings (
   id SERIAL PRIMARY KEY,
   fund_code TEXT NOT NULL REFERENCES funds(code),
@@ -28,31 +25,32 @@ CREATE TABLE IF NOT EXISTS fund_holdings (
   weight NUMERIC NOT NULL,
   date DATE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  UNIQUE(fund_code, stock_code, date)
+  UNIQUE (fund_code, stock_code, date)
 );
 
--- Insert dữ liệu mẫu cho các quỹ sẽ crawl
 INSERT INTO funds (code, name, company)
-VALUES 
-  ('VESAF', 'Quỹ Đầu tư Cổ phiếu Hưng thịnh VinaCapital', 'VinaCapital'),
-  ('VEOF', 'Quỹ Đầu tư Cổ phiếu Tiếp cận Thị trường VinaCapital', 'VinaCapital'),
-  ('VLGF', 'Quỹ Đầu tư Cổ phiếu Tập trung Cổ tức VinaCapital', 'VinaCapital'),
-  ('VFF', 'Quỹ Đầu tư Trái phiếu Bảo Thịnh VinaCapital', 'VinaCapital'),
-  ('VIBF', 'Quỹ Đầu tư Cân bằng Tuệ sáng VinaCapital', 'VinaCapital'),
-  ('SSISCA', 'Quỹ Đầu tư Cổ phiếu Trưởng thành SSI', 'SSIAM'),
-  ('SSIBF', 'Quỹ Đầu tư Trái phiếu SSI', 'SSIAM'),
-  ('DCBC', 'Quỹ Đầu tư Cổ phiếu Năng động Dragon Capital', 'DragonCapital'),
-  ('DCDS', 'Quỹ Đầu tư Cổ phiếu Tăng trưởng Dragon Capital', 'DragonCapital'),
-  ('DCIP', 'Quỹ Đầu tư Thu nhập Cố định Dragon Capital', 'DragonCapital'),
-  ('DCBF', 'Quỹ Đầu tư Trái phiếu Dragon Capital', 'DragonCapital')
+VALUES
+  ('VESAF', 'Quỹ Cổ phiếu Hưng thịnh VinaCapital', 'VinaCapital'),
+  ('VEOF', 'Quỹ Cổ phiếu Tiếp cận Thị trường VinaCapital', 'VinaCapital'),
+  ('VFF', 'Quỹ Trái phiếu Bảo thịnh VinaCapital', 'VinaCapital'),
+  ('VIBF', 'Quỹ Cân bằng Tuệ sáng VinaCapital', 'VinaCapital'),
+  ('VDEF', 'Quỹ VinaCapital VDEF', 'VinaCapital'),
+  ('VLBF', 'Quỹ VinaCapital VLBF', 'VinaCapital'),
+  ('SSISCA', 'Quỹ Cổ phiếu Trưởng thành SSI', 'SSIAM'),
+  ('SSIBF', 'Quỹ Trái phiếu SSI', 'SSIAM'),
+  ('VLGF', 'Vietnam Long-term Growth Fund', 'SSIAM'),
+  ('SSI-EF', 'SSI-EF', 'SSIAM'),
+  ('DCBC', 'Quỹ DCBC', 'DragonCapital'),
+  ('DCDS', 'Quỹ Đầu tư Chứng khoán Năng động DC', 'DragonCapital'),
+  ('DCIP', 'Quỹ Thu nhập Cố định Dragon Capital', 'DragonCapital'),
+  ('DCBF', 'Quỹ Trái phiếu Dragon Capital', 'DragonCapital'),
+  ('DCDE', 'Quỹ cổ phiếu DCDE', 'DragonCapital')
 ON CONFLICT (code) DO NOTHING;
 
--- Bật Row Level Security (RLS) để bảo mật
 ALTER TABLE funds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fund_nav ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fund_holdings ENABLE ROW LEVEL SECURITY;
 
--- Tạo policies cho phép đọc công khai (cho Next.js Client fetching nếu cần)
 DROP POLICY IF EXISTS "Allow public read access to funds" ON funds;
 CREATE POLICY "Allow public read access to funds" ON funds FOR SELECT USING (true);
 

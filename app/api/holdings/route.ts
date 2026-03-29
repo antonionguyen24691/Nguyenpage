@@ -1,68 +1,64 @@
-import { NextResponse } from 'next/server';
-import { db } from '../../../packages/db';
+import { NextResponse } from "next/server";
+import { buildHoldingsComparison } from "@/lib/fundAnalytics";
+import { getFundDataset } from "@/lib/fundDataStore";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const fundCode = searchParams.get('fund');
-    const targetDate = searchParams.get('date');
+    const fundCode = searchParams.get("fund");
+    const targetDate = searchParams.get("date");
 
     if (!fundCode) {
-      return NextResponse.json({ success: false, error: 'Thiếu mã quỹ (fund)' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Thiếu mã quỹ (fund)" },
+        { status: 400 },
+      );
     }
 
-    // 1. Lấy tất cả các ngày (dates) đã có trong database của quỹ này để làm tính năng lịch sử
-    const { data: allDatesData, error: datesError } = await db
-      .from('fund_holdings')
-      .select('date')
-      .eq('fund_code', fundCode.toUpperCase())
-      .order('date', { ascending: false });
+    const normalizedFundCode = fundCode.toUpperCase();
+    const dataset = await getFundDataset();
+    const fundRows = dataset.holdings.filter(
+      (row) => row.fund_code === normalizedFundCode,
+    );
+    const availableDates = Array.from(new Set(fundRows.map((row) => row.date))).sort(
+      (left, right) => new Date(right).getTime() - new Date(left).getTime(),
+    );
 
-    let availableDates: string[] = [];
-    if (!datesError && allDatesData) {
-      // Distinct dates
-      const uniqueDates = Array.from(new Set(allDatesData.map(d => d.date)));
-      availableDates = uniqueDates;
-    }
-
-    // 2. Định dạng ngày cần truy xuất
     let dateToFetch = targetDate;
     if (!dateToFetch && availableDates.length > 0) {
-       dateToFetch = availableDates[0]; // Mặc định lấy tháng mới nhất
+      dateToFetch = availableDates[0];
     }
 
     if (!dateToFetch) {
       return NextResponse.json({
         success: true,
-        fund: fundCode.toUpperCase(),
+        fund: normalizedFundCode,
         data: [],
         date: null,
-        availableDates: []
+        availableDates: [],
+        comparisonDates: [],
+        comparisonRows: [],
       });
     }
 
-    // 3. Lấy toàn bộ danh mục của tháng được chọn
-    const { data, error } = await db
-      .from('fund_holdings')
-      .select('*')
-      .eq('fund_code', fundCode.toUpperCase())
-      .eq('date', dateToFetch)
-      .order('weight', { ascending: false });
-
-    if (error) {
-      throw error;
-    }
+    const data = fundRows
+      .filter((row) => row.date === dateToFetch)
+      .sort((left, right) => right.weight - left.weight);
+    const comparison = buildHoldingsComparison(fundRows, dateToFetch, 4);
 
     return NextResponse.json({
       success: true,
-      fund: fundCode.toUpperCase(),
+      fund: normalizedFundCode,
       date: dateToFetch,
-      data: data,
-      availableDates: availableDates
+      data,
+      availableDates,
+      comparisonDates: comparison.dates,
+      comparisonRows: comparison.rows,
     });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

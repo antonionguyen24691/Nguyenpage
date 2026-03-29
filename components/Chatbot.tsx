@@ -8,9 +8,10 @@ type ChatEntry = {
 };
 
 const starterPrompts = [
-  "Toi muon duoc tu van mo tai khoan doanh nghiep",
-  "Giai phap SaaS nao phu hop de van hanh phong tro?",
-  "Cho toi xem cac buoc dang ky nhanh",
+  "Tôi muốn mở tài khoản doanh nghiệp, nên đi luồng nào?",
+  "So sánh nhanh VEOF với VESAF theo dữ liệu hiện có",
+  "Hệ thống SaaS nào phù hợp để vận hành phòng trọ?",
+  "Cho tôi các bước đăng ký nhanh và giấy tờ cần chuẩn bị",
 ];
 
 export default function Chatbot() {
@@ -45,7 +46,7 @@ export default function Chatbot() {
         ...prev,
         {
           role: "bot",
-          text: data.reply || "Toi da nhan yeu cau. Hay cho toi them mot chut thong tin.",
+          text: data.reply || "Tôi đã nhận yêu cầu. Hãy cho tôi thêm một chút ngữ cảnh để định hướng chính xác hơn.",
         },
       ]);
     } catch {
@@ -53,7 +54,7 @@ export default function Chatbot() {
         ...prev,
         {
           role: "bot",
-          text: "Co loi ket noi tam thoi. Ban co the thu lai sau it phut.",
+          text: "Có lỗi kết nối tạm thời. Bạn có thể thử lại sau ít phút.",
         },
       ]);
     } finally {
@@ -86,7 +87,7 @@ export default function Chatbot() {
                 <div>
                   <p className="font-headline text-base font-extrabold">Banker Assistant</p>
                   <p className="text-xs text-white/78">
-                    Tro ly tu van nhanh ve tai chinh va SaaS
+                    Tư vấn tài chính, SaaS và dữ liệu quỹ theo ngữ cảnh hệ thống
                   </p>
                 </div>
               </div>
@@ -100,8 +101,7 @@ export default function Chatbot() {
             {chat.length === 0 && (
               <div className="space-y-4">
                 <div className="rounded-3xl border border-outline-variant/60 bg-surface-container-low p-4 text-sm leading-7 text-on-surface-variant">
-                  Ban co the dat cau hoi nhanh, xin bao gia hoac de he thong huong dan
-                  luong dang ky phu hop.
+                  Bạn có thể hỏi về mở tài khoản, lựa chọn gói SaaS, hoặc yêu cầu bot giải thích nhanh mã quỹ và dashboard quỹ mở.
                 </div>
                 <div className="space-y-2">
                   {starterPrompts.map((prompt) => (
@@ -170,7 +170,7 @@ export default function Chatbot() {
                     send();
                   }
                 }}
-                placeholder="Nhap cau hoi cua ban..."
+                placeholder="Nhập câu hỏi của bạn..."
                 className="min-h-[52px] flex-1 rounded-2xl border border-outline-variant/70 bg-surface-container-low px-4 py-3 text-sm text-on-surface outline-none focus:border-primary"
               />
               <button

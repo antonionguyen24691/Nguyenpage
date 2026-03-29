@@ -1,158 +1,118 @@
+import { fundCatalog, getFundCatalogEntry, type FundCatalogEntry } from "@/lib/fundCatalog";
+
 type FundData = {
   fund: string;
   nav: number;
-  date: string; // YYYY-MM-DD
+  date: string;
   source: string;
 };
 
-/**
- * Crawl VinaCapital (VEOF, VESAF, VLGF)
- * Họ có API công khai trả về JSON thông qua admin-ajax.
- */
-export async function crawlVinaCapital(fundName: string): Promise<FundData[]> {
+const productIdCache = new Map<string, number | null>();
+
+function formatRequestDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+async function resolveFmarketProductId(entry: FundCatalogEntry) {
+  if (productIdCache.has(entry.code)) {
+    return productIdCache.get(entry.code) ?? null;
+  }
+
+  if (entry.productId) {
+    productIdCache.set(entry.code, entry.productId);
+    return entry.productId;
+  }
+
+  if (!entry.slug) {
+    productIdCache.set(entry.code, null);
+    return null;
+  }
+
   try {
-    const response = await fetch('https://vinacapital.com/wp-admin/admin-ajax.php', {
-      method: 'POST',
+    const response = await fetch(`https://fmarket.vn/quy/${entry.slug}`, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      cache: "no-store",
+    });
+    const html = await response.text();
+    const match = html.match(/productId=(\d+)/);
+    const productId = match ? Number(match[1]) : null;
+    productIdCache.set(entry.code, productId);
+    return productId;
+  } catch (error) {
+    console.error(`Error resolving productId for ${entry.code}:`, error);
+    productIdCache.set(entry.code, null);
+    return null;
+  }
+}
+
+async function fetchFmarketNav(entry: FundCatalogEntry): Promise<FundData[]> {
+  const productId = await resolveFmarketProductId(entry);
+  if (!productId) {
+    return [];
+  }
+
+  try {
+    const response = await fetch("https://api.fmarket.vn/res/product/get-nav-history", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0",
       },
-      body: new URLSearchParams({
-        action: 'getchartfundnav',
-        fundname: fundName,
+      body: JSON.stringify({
+        productId,
+        fromDate: formatRequestDate(
+          new Date(Date.UTC(new Date().getUTCFullYear() - 10, 0, 1)),
+        ),
+        toDate: formatRequestDate(new Date()),
       }),
-	  // Cache no-store đảm bảo luôn lấy data mới nhất
-	  cache: 'no-store'
+      cache: "no-store",
     });
-    
-    const data = await response.json();
-    // VinaCapital trả về mảng log dữ liệu, lấy toàn bộ lịch sử
-    if (data && Array.isArray(data)) {
-      return data.map((item: any) => ({
-        fund: fundName,
-        nav: parseFloat(item[1]),
-        date: new Date(item[0]).toISOString().split('T')[0],
-        source: 'VinaCapital',
-      }));
+
+    const payload = await response.json();
+    if (!Array.isArray(payload?.data)) {
+      return [];
     }
-    return [];
+
+    return payload.data
+      .map((item: { nav: number | string; navDate: string }) => ({
+        fund: entry.code,
+        nav: Number(item.nav),
+        date: item.navDate,
+        source: `${entry.company} via Fmarket`,
+      }))
+      .filter((item: FundData) => Number.isFinite(item.nav) && item.nav > 0 && item.date);
   } catch (error) {
-    console.error(`Error crawling VinaCapital ${fundName}:`, error);
+    console.error(`Error crawling ${entry.code}:`, error);
     return [];
   }
 }
 
-const FMARKET_FUNDS: Record<string, number> = {
-  'DCIP': 67,
-  'DCBF': 27,
-  'DCDS': 28,
-  'SSIBF': 8,
-  'SSISCA': 11
-};
-
-async function fetchFmarketNav(fundName: string, source: string): Promise<FundData[]> {
-  const fundId = FMARKET_FUNDS[fundName];
-  if (!fundId) return []; // DCBC hoặc các quỹ không có mặt
-
-  try {
-    const res = await fetch('https://api.fmarket.vn/res/product/get-nav-history', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      },
-      body: JSON.stringify({ 
-        isAllData: 1, 
-        productId: fundId,
-        searchField: "", 
-        sortBy: "", 
-        sortOrder: "" 
-      })
-    });
-    const data = await res.json();
-    if (data && Array.isArray(data.data)) {
-      return data.data.map((item: any) => {
-        const dateVal = item.navDate;
-        let formattedDate = new Date().toISOString().split('T')[0];
-        
-        if (dateVal) {
-          if (typeof dateVal === 'string') {
-            const yyyymmddRegex = /^(\d{4})(\d{2})(\d{2})$/;
-            const match = dateVal.match(yyyymmddRegex);
-            if (match) {
-              formattedDate = `${match[1]}-${match[2]}-${match[3]}`;
-            } else {
-              // Try standard parse
-              formattedDate = new Date(dateVal).toISOString().split('T')[0];
-            }
-          } else if (typeof dateVal === 'number') {
-            formattedDate = new Date(dateVal).toISOString().split('T')[0];
-          }
-        }
-
-        return {
-          fund: fundName,
-          nav: parseFloat(item.nav),
-          date: formattedDate,
-          source: source,
-        };
-      });
-    }
-  } catch (error) {
-    console.error(`Error crawling Fmarket ${fundName}:`, error);
-  }
-  return [];
+export async function crawlVinaCapital(fundName: string): Promise<FundData[]> {
+  const entry = getFundCatalogEntry(fundName);
+  return entry ? fetchFmarketNav(entry) : [];
 }
 
-/**
- * Crawl DragonCapital (DCBC, DCDS)
- * Sử dụng Cheerio cào HTML trang web của họ do không có JSON API.
- */
 export async function crawlDragonCapital(fundName: string): Promise<FundData[]> {
-  try {
-    return await fetchFmarketNav(fundName, 'DragonCapital(Fmarket)');
-  } catch (error) {
-    console.error(`Error crawling DragonCapital ${fundName}:`, error);
-    return [];
-  }
+  const entry = getFundCatalogEntry(fundName);
+  return entry ? fetchFmarketNav(entry) : [];
 }
 
-/**
- * Crawl SSIAM (SSISCA)
- * Sử dụng API mở của fmarket
- */
 export async function crawlSSIAM(fundName: string): Promise<FundData[]> {
-  try {
-    return await fetchFmarketNav(fundName, 'SSIAM(Fmarket)');
-  } catch (error) {
-    console.error(`Error crawling SSIAM ${fundName}:`, error);
-    return [];
-  }
+  const entry = getFundCatalogEntry(fundName);
+  return entry ? fetchFmarketNav(entry) : [];
 }
 
 export async function crawlAllFunds(): Promise<FundData[]> {
-  const results: FundData[] = [];
-  
-  // VinaCapital
-  const vinaFunds = ['VEOF', 'VESAF', 'VLGF', 'VFF', 'VIBF'];
-  for (const fund of vinaFunds) {
-    const data = await crawlVinaCapital(fund);
-    results.push(...data);
+  const groups = await Promise.all(fundCatalog.map((entry) => fetchFmarketNav(entry)));
+  const unique = new Map<string, FundData>();
+
+  for (const rows of groups) {
+    for (const row of rows) {
+      unique.set(`${row.fund}::${row.date}`, row);
+    }
   }
 
-  // DragonCapital
-  const dcFunds = ['DCBC', 'DCDS', 'DCIP', 'DCBF'];
-  for (const fund of dcFunds) {
-    const data = await crawlDragonCapital(fund);
-    results.push(...data);
-  }
-
-  // SSIAM
-  const ssiFunds = ['SSISCA', 'SSIBF'];
-  for (const fund of ssiFunds) {
-    const data = await crawlSSIAM(fund);
-    results.push(...data);
-  }
-
-  return results;
+  return [...unique.values()].sort(
+    (left, right) => new Date(left.date).getTime() - new Date(right.date).getTime(),
+  );
 }

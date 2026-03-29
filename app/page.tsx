@@ -1,137 +1,102 @@
 import Link from "next/link";
 import Chatbot from "@/components/Chatbot";
-import PageBlocksRenderer from "@/components/PageBlocksRenderer";
 import { defaultHomeConfig, type HomeConfig } from "@/lib/homeConfig";
-import { getConfiguredPage } from "@/lib/sitePages";
-import { db } from "@/packages/db";
+import { getConfigValue } from "@/lib/siteConfigStore";
 
 export const dynamic = "force-dynamic";
 
 async function getHomeConfig(): Promise<HomeConfig> {
-  try {
-    const { data, error } = await db
-      .from("site_config")
-      .select("config_value")
-      .eq("config_key", "home")
-      .single();
-
-    if (error && error.code !== "PGRST116") {
-      console.error("Failed to load home config:", error.message);
-    }
-
-    if (data?.config_value) {
-      return { ...defaultHomeConfig, ...data.config_value };
-    }
-  } catch (error) {
-    console.error("Failed to load home config:", error);
-  }
-
-  return defaultHomeConfig;
+  const value = await getConfigValue("home", defaultHomeConfig);
+  return { ...defaultHomeConfig, ...value };
 }
 
-const trustStats = [
-  { value: "24h", label: "thoi gian phan hoi uu tien" },
-  { value: "99.9%", label: "muc tieu van hanh on dinh" },
-  { value: "1 workspace", label: "quan ly tai chinh va SaaS dong nhat" },
-];
-
 export default async function Home() {
-  const [config, page] = await Promise.all([getHomeConfig(), getConfiguredPage("/")]);
-
-  if (page?.blocks?.length) {
-    return (
-      <>
-        <section className="px-6 pb-24 pt-10 md:px-8 md:pt-16">
-          <div className="mx-auto max-w-7xl">
-            <PageBlocksRenderer blocks={page.blocks} />
-          </div>
-        </section>
-        <Chatbot />
-      </>
-    );
-  }
+  const config = await getHomeConfig();
 
   return (
     <>
-      <section className="mesh-background relative overflow-hidden px-6 pb-20 pt-10 md:px-8 md:pb-28 md:pt-16">
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
-          <div className="space-y-8">
-            <div className="section-kicker">
-              <span className="material-symbols-outlined text-base">verified</span>
-              {config.bankingLabel}
-            </div>
-
-            <div className="space-y-5">
-              <h1 className="section-title max-w-4xl">
-                {config.bankingTitle}{" "}
-                <span className="gradient-text">
-                  {config.saasTitle} {config.saasTitleHighlight}
-                </span>
-              </h1>
-              <p className="section-copy max-w-2xl">
-                {config.bankingDesc}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href={config.ctaButtonUrl}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-on-surface px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-on-surface/10 hover:bg-primary"
-              >
-                {config.ctaButtonText}
-                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-              </Link>
-              <Link
-                href={config.bankingViewAllUrl}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-outline-variant/80 bg-white/70 px-6 py-3.5 text-sm font-semibold text-on-surface hover:border-primary/35 hover:text-primary"
-              >
-                {config.bankingViewAllText}
-                <span className="material-symbols-outlined text-[18px]">north_east</span>
-              </Link>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              {trustStats.map((stat) => (
-                <div key={stat.label} className="panel-card rounded-[1.75rem] px-5 py-4">
-                  <p className="font-headline text-2xl font-extrabold text-on-surface">
-                    {stat.value}
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-on-surface-variant">
-                    {stat.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="panel-card rounded-[2rem] p-5 md:p-7">
-            <div className="rounded-[1.75rem] bg-gradient-to-br from-primary via-[#0d8c78] to-secondary p-6 text-white md:p-8">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-white/70">
-                    Homepage fallback
-                  </p>
-                  <h2 className="mt-3 max-w-sm font-headline text-3xl font-extrabold leading-tight">
-                    Landing page nay dang dung `homeConfig`.
-                  </h2>
-                </div>
-                <div className="rounded-full bg-white/15 px-3 py-2 text-xs font-semibold">
-                  Config
-                </div>
+      <section className="bg-surface pt-10 md:pt-16">
+        <div className="mx-auto max-w-7xl px-6 md:px-8">
+          <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+            <div className="space-y-8">
+              <div className="section-kicker">
+                <span className="material-symbols-outlined text-base">verified</span>
+                {config.bankingLabel}
               </div>
 
-              <div className="mt-8 grid gap-4 md:grid-cols-2">
-                {config.bankingCards.slice(0, 2).map((card) => (
+              <div className="space-y-5">
+                <h1 className="section-title max-w-4xl">{config.bankingTitle}</h1>
+                <p className="section-copy max-w-2xl">{config.bankingDesc}</p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href={config.ctaButtonUrl}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-on-surface px-6 py-3.5 text-sm font-semibold text-white hover:bg-primary"
+                >
+                  {config.ctaButtonText}
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </Link>
+                <Link
+                  href={config.bankingViewAllUrl}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-outline-variant/80 bg-white px-6 py-3.5 text-sm font-semibold text-on-surface hover:border-primary/35 hover:text-primary"
+                >
+                  {config.bankingViewAllText}
+                  <span className="material-symbols-outlined text-[18px]">north_east</span>
+                </Link>
+              </div>
+            </div>
+
+            <div className="panel-card rounded-[2rem] p-4 md:p-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                {config.bankingCards.slice(0, 4).map((card, index) => (
                   <Link
                     key={card.title}
                     href={card.url || "#"}
-                    className="rounded-[1.5rem] bg-white/12 p-4 backdrop-blur-sm hover:bg-white/18"
+                    className={`rounded-[1.6rem] p-5 ${
+                      index === 0
+                        ? "bg-gradient-to-br from-primary to-secondary text-white"
+                        : "bg-surface-container-low hover:bg-white"
+                    }`}
                   >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/14">
-                      <span className="material-symbols-outlined">{card.icon}</span>
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+                          index === 0 ? "bg-white/18" : "bg-primary/10 text-primary"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined">{card.icon}</span>
+                      </span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] opacity-75">
+                        0{index + 1}
+                      </span>
                     </div>
-                    <h3 className="mt-4 font-headline text-lg font-bold">{card.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-white/78">{card.desc}</p>
+                    <h2 className="mt-6 font-headline text-2xl font-bold">{card.title}</h2>
+                    <p
+                      className={`mt-3 text-sm leading-7 ${
+                        index === 0 ? "text-white/82" : "text-on-surface-variant"
+                      }`}
+                    >
+                      {card.desc}
+                    </p>
+
+                    {card.tags?.length ? (
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {card.tags.map((tag) => (
+                          <Link
+                            key={`${card.title}-${tag.label}`}
+                            href={tag.url || card.url || "#"}
+                            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                              index === 0
+                                ? "bg-white/15 text-white hover:bg-white/25"
+                                : "bg-primary/10 text-primary hover:bg-primary/15"
+                            }`}
+                          >
+                            {tag.label}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
                   </Link>
                 ))}
               </div>
@@ -141,7 +106,46 @@ export default async function Home() {
       </section>
 
       <section className="px-6 py-16 md:px-8 md:py-24">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+        <div className="mx-auto max-w-7xl rounded-[2rem] border border-outline-variant/60 bg-white/76 p-5 shadow-[0_18px_36px_rgba(16,32,51,0.06)] backdrop-blur-xl md:p-6">
+          <div className="grid gap-6 md:grid-cols-4">
+            {config.bankingCards.map((card, index) => (
+              <Link
+                key={card.title}
+                href={card.url || "#"}
+                className={`rounded-[1.5rem] p-5 ${
+                  index === 0
+                    ? "bg-gradient-to-br from-primary to-secondary text-white"
+                    : "bg-surface-container-low hover:bg-white"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                      index === 0 ? "bg-white/18" : "bg-primary/10 text-primary"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">{card.icon}</span>
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em] opacity-75">
+                    0{index + 1}
+                  </span>
+                </div>
+                <h3 className="mt-5 font-headline text-xl font-bold">{card.title}</h3>
+                <p
+                  className={`mt-3 text-sm leading-7 ${
+                    index === 0 ? "text-white/82" : "text-on-surface-variant"
+                  }`}
+                >
+                  {card.desc}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-6 py-8 md:px-8 md:py-12">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
           <div className="space-y-5">
             <div className="section-kicker">
               <span className="material-symbols-outlined text-base">deployed_code</span>
@@ -172,13 +176,92 @@ export default async function Home() {
                 </h3>
                 <p className="mt-2 text-sm leading-7 text-on-surface-variant">{card.desc}</p>
                 <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-secondary">
-                  {card.linkText || "Kham pha"}
+                  {card.linkText || "Khám phá"}
                   <span className="material-symbols-outlined text-[18px] transition-transform group-hover:translate-x-1">
                     arrow_forward
                   </span>
                 </div>
               </Link>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-6 py-16 md:px-8 md:py-20">
+        <div className="mx-auto grid max-w-7xl gap-10 rounded-[2rem] border border-outline-variant/60 bg-white/78 p-6 shadow-[0_18px_36px_rgba(16,32,51,0.06)] backdrop-blur-xl lg:grid-cols-[1fr_0.96fr] lg:items-center lg:p-8">
+          <div className="overflow-hidden rounded-[1.8rem] bg-surface-container-low">
+            <img
+              src={config.dynamicImage}
+              alt="Dashboard preview"
+              className="h-full min-h-[320px] w-full object-cover"
+            />
+          </div>
+          <div className="space-y-6">
+            <div className="section-kicker">
+              <span className="material-symbols-outlined text-base">dashboard_customize</span>
+              Digital clarity
+            </div>
+            <h2 className="section-title text-[clamp(2rem,3.2vw,3.4rem)]">
+              {config.dynamicTitle}{" "}
+              <span className="gradient-text">{config.dynamicTitleHighlight}</span>
+            </h2>
+            <p className="section-copy">{config.dynamicDesc}</p>
+            <div className="grid gap-4">
+              {config.dynamicFeatures.map((feature) => (
+                <div
+                  key={feature.title}
+                  className="rounded-[1.4rem] border border-outline-variant/60 bg-surface-container-low px-5 py-4"
+                >
+                  <div className="flex gap-4">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <span className="material-symbols-outlined">{feature.icon}</span>
+                    </span>
+                    <div>
+                      <h3 className="font-semibold text-on-surface">{feature.title}</h3>
+                      <p className="mt-1 text-sm leading-6 text-on-surface-variant">
+                        {feature.desc}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-6 pb-24 pt-16 md:px-8">
+        <div className="mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-on-surface via-[#17324f] to-secondary px-6 py-10 text-white shadow-[0_28px_70px_rgba(16,32,51,0.2)] md:px-10 md:py-14">
+          <div className="grid gap-8 lg:grid-cols-[1fr_0.74fr] lg:items-center">
+            <div className="space-y-5">
+              <div className="section-kicker border-white/15 bg-white/10 text-white">
+                <span className="material-symbols-outlined text-base">rocket_launch</span>
+                Launch support
+              </div>
+              <h2 className="font-headline text-4xl font-extrabold leading-tight md:text-5xl">
+                {config.ctaTitle}
+              </h2>
+              <p className="max-w-2xl text-base leading-8 text-white/76">{config.ctaDesc}</p>
+            </div>
+
+            <div className="rounded-[2rem] bg-white/10 p-5 backdrop-blur-md">
+              <div className="grid gap-3">
+                <Link
+                  href={config.ctaButtonUrl}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3.5 text-sm font-semibold text-on-surface hover:bg-primary-container"
+                >
+                  {config.ctaButtonText}
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </Link>
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/18 px-5 py-3.5 text-sm font-semibold text-white hover:bg-white/10"
+                >
+                  Mở CMS Admin
+                  <span className="material-symbols-outlined text-[18px]">settings</span>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>

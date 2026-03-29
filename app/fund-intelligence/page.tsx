@@ -1,17 +1,30 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import FundCard from '../../components/FundCard';
-import FundChart from '../../components/FundChart';
-import FundHoldingsPie from '../../components/FundHoldingsPie';
+import React, { useEffect, useState } from "react";
+import FundCard from "@/components/FundCard";
+import FundChart from "@/components/FundChart";
+import FundHoldingsPie from "@/components/FundHoldingsPie";
+import FundHistoryTable from "@/components/FundHistoryTable";
+import HoldingsComparisonTable from "@/components/HoldingsComparisonTable";
+import {
+  buildCandles,
+  buildHeikinAshi,
+  filterSeriesByRange,
+  toChartSeries,
+  type ChartPoint,
+  type FundNavRecord,
+  type HoldingsComparisonRow,
+} from "@/lib/fundAnalytics";
 
 type Fund = {
-  id: number;
   code: string;
   name: string;
   company: string;
+  category: string;
   nav: number | null;
   nav_date: string | null;
+  daily_change_percent: number | null;
+  point_count: number;
 };
 
 type Holding = {
@@ -20,221 +33,485 @@ type Holding = {
   date: string;
 };
 
+type NavPayload = {
+  data: FundNavRecord[];
+  metrics: {
+    latestNav: number | null;
+    latestDate: string | null;
+    daily: { percent: number | null };
+    monthly: { percent: number | null };
+    quarterly: { percent: number | null };
+    sinceInception: { percent: number | null };
+    high: number | null;
+    low: number | null;
+    pointCount: number;
+  };
+  comparison: Record<string, ChartPoint[]>;
+  peerCodes: string[];
+  ai_insight: string;
+};
+
+type HoldingsPayload = {
+  data: Holding[];
+  date: string | null;
+  availableDates: string[];
+  comparisonDates: string[];
+  comparisonRows: HoldingsComparisonRow[];
+};
+
+const RANGE_OPTIONS = ["1M", "3M", "6M", "1Y", "ALL"] as const;
+const CHART_MODES = [
+  { key: "area", label: "Area" },
+  { key: "line", label: "Line" },
+  { key: "candles", label: "Nến Nhật" },
+  { key: "heikin", label: "Heikin-Ashi" },
+  { key: "compare", label: "Đối chiếu" },
+] as const;
+
+const COMPARE_COLORS = ["#0c7a69", "#1f4db7", "#b86f31", "#c73a3a"];
+
+function formatPercent(value: number | null) {
+  return value === null ? "N/A" : `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
 export default function FundIntelligenceDashboard() {
   const [funds, setFunds] = useState<Fund[]>([]);
   const [selectedFund, setSelectedFund] = useState<string | null>(null);
-  
-  const [activeTab, setActiveTab] = useState<'nav' | 'holdings'>('nav');
-
-  // State for NAV Chart
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [insight, setInsight] = useState<string>('');
-  const [chartLoading, setChartLoading] = useState(false);
-
-  // State for Holdings
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [holdingsDate, setHoldingsDate] = useState<string | null>(null);
-  const [selectedHoldingsDate, setSelectedHoldingsDate] = useState<string | null>(null);
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
-  const [holdingsLoading, setHoldingsLoading] = useState(false);
-
   const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [holdingsLoading, setHoldingsLoading] = useState(false);
+  const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>("6M");
+  const [chartMode, setChartMode] = useState<(typeof CHART_MODES)[number]["key"]>("area");
+  const [navPayload, setNavPayload] = useState<NavPayload | null>(null);
+  const [holdingsPayload, setHoldingsPayload] = useState<HoldingsPayload | null>(null);
+  const [selectedHoldingsDate, setSelectedHoldingsDate] = useState<string | null>(null);
 
-  // Load funds once
   useEffect(() => {
-    fetch('/api/funds')
-      .then(r => r.json())
-      .then(res => {
-        if (res.success) {
-          setFunds(res.data);
-          if (res.data.length > 0) {
-            setSelectedFund(res.data[0].code);
+    fetch("/api/funds")
+      .then((response) => response.json())
+      .then((payload) => {
+        if (payload.success) {
+          setFunds(payload.data);
+          if (payload.data.length > 0) {
+            setSelectedFund(payload.data[0].code);
           }
         }
-        setLoading(false);
       })
-      .catch(e => {
-        console.error('Lỗi khi fetch funds:', e);
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }, []);
 
-  // Fetch NAV when fund changes
   useEffect(() => {
-    if (selectedFund) {
-      setChartLoading(true);
-      fetch(`/api/nav?fund=${selectedFund}&days=90`)
-        .then(r => r.json())
-        .then(res => {
-          if (res.success && res.data) {
-             const mapped = res.data.map((d: any) => ({ time: d.date, value: Number(d.nav) }));
-             setChartData(mapped);
-             setInsight(res.ai_insight || '');
-          } else {
-             setChartData([]);
-             setInsight('');
-          }
-          setChartLoading(false);
-        })
-        .catch(e => { console.error('Lỗi fetch NAV:', e); setChartLoading(false); });
+    if (!selectedFund) {
+      return;
     }
+
+    setChartLoading(true);
+    fetch(`/api/nav?fund=${selectedFund}&days=365`)
+      .then((response) => response.json())
+      .then((payload) => {
+        if (payload.success) {
+          setNavPayload(payload);
+        }
+      })
+      .finally(() => setChartLoading(false));
   }, [selectedFund]);
 
-  // Fetch Holdings when fund or selected date changes
   useEffect(() => {
-     if (selectedFund) {
-        setHoldingsLoading(true);
-        const dateQuery = selectedHoldingsDate ? `&date=${selectedHoldingsDate}` : '';
-        fetch(`/api/holdings?fund=${selectedFund}${dateQuery}`)
-          .then(r => r.json())
-          .then(res => {
-            if (res.success && res.data) {
-              setHoldings(res.data);
-              setHoldingsDate(res.date);
-              setAvailableDates(res.availableDates || []);
-              if (!selectedHoldingsDate && res.date) {
-                 setSelectedHoldingsDate(res.date);
-              }
-            } else {
-              setHoldings([]);
-              setHoldingsDate(null);
-            }
-            setHoldingsLoading(false);
-          })
-          .catch(e => { console.error('Lỗi fetch holdings:', e); setHoldingsLoading(false); });
-     }
+    if (!selectedFund) {
+      return;
+    }
+
+    setHoldingsLoading(true);
+    const dateQuery = selectedHoldingsDate ? `&date=${selectedHoldingsDate}` : "";
+    fetch(`/api/holdings?fund=${selectedFund}${dateQuery}`)
+      .then((response) => response.json())
+      .then((payload) => {
+        if (payload.success) {
+          setHoldingsPayload(payload);
+          if (!selectedHoldingsDate && payload.date) {
+            setSelectedHoldingsDate(payload.date);
+          }
+        }
+      })
+      .finally(() => setHoldingsLoading(false));
   }, [selectedFund, selectedHoldingsDate]);
 
-  const handleFundSwitch = (fundCode: string) => {
-      setSelectedFund(fundCode);
-      setSelectedHoldingsDate(null); // Reset to fetch latest holdings for new fund
-  };
-
-  const renderMarkdown = (text: string) => {
-    return { __html: text.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') };
-  };
+  const currentFund = funds.find((item) => item.code === selectedFund) ?? null;
+  const chartSeries = navPayload ? filterSeriesByRange(toChartSeries(navPayload.data), range) : [];
+  const candles = buildCandles(chartSeries, range === "1M" ? "week" : "month");
+  const heikinAshi = buildHeikinAshi(candles);
+  const comparisonSeries =
+    chartMode === "compare" && navPayload
+      ? Object.entries(navPayload.comparison)
+          .filter(([, data]) => data.length > 0)
+          .map(([code, data], index) => ({
+            code: code === "self" ? selectedFund ?? "SELF" : code,
+            color: COMPARE_COLORS[index % COMPARE_COLORS.length],
+            data: filterSeriesByRange(data, range),
+          }))
+      : [];
+  const historyRows = navPayload ? [...navPayload.data].slice(-40).reverse() : [];
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-neutral-50">
-        <div className="text-primary animate-pulse font-medium text-lg">Đang kết nối trung tâm dữ liệu...</div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="rounded-full border border-outline-variant/70 bg-white/80 px-5 py-3 text-sm font-semibold text-on-surface">
+          Đang tải trung tâm dữ liệu quỹ...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8 bg-neutral-50 min-h-screen">
-      <div>
-        <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Tài sản Quỹ (Fund Intelligence)</h1>
-        <p className="text-neutral-500 mt-2">
-          Theo dõi dữ liệu Net Asset Value (NAV) và nhận định xu hướng bằng hệ thống AI nội bộ.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 xl:gap-8">
-        <div className="xl:col-span-1 space-y-4 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
-          {funds.map(fund => (
-            <FundCard
-              key={fund.id}
-              fundCode={fund.code}
-              fundName={fund.name}
-              nav={fund.nav}
-              navDate={fund.nav_date}
-              isActive={selectedFund === fund.code}
-              onClick={() => handleFundSwitch(fund.code)}
-            />
-          ))}
-        </div>
-
-        <div className="xl:col-span-3 space-y-6">
-          {/* Tabs Navigation */}
-          <div className="flex space-x-1 bg-white p-1 rounded-xl w-fit shadow-sm border border-neutral-100">
-             <button 
-               onClick={() => setActiveTab('nav')}
-               className={`px-6 py-2 rounded-lg font-medium transition-all text-sm ${
-                 activeTab === 'nav' ? 'bg-primary text-white shadow-md' : 'text-neutral-500 hover:text-neutral-900'
-               }`}
-             >Biểu đồ NAV</button>
-             <button 
-               onClick={() => setActiveTab('holdings')}
-               className={`px-6 py-2 rounded-lg font-medium transition-all text-sm ${
-                 activeTab === 'holdings' ? 'bg-primary text-white shadow-md' : 'text-neutral-500 hover:text-neutral-900'
-               }`}
-             >Danh mục cập nhật</button>
+    <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-8 px-4 pb-14 pt-8 md:px-6 xl:px-8">
+      <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(243,247,255,0.82))] p-6 shadow-[0_24px_60px_rgba(16,32,51,0.08)] md:p-8">
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-5">
+            <span className="section-kicker">Fund Intelligence</span>
+            <div>
+              <h1 className="section-title max-w-4xl">
+                Dashboard quỹ mở hiện đại, nhiều lớp dữ liệu và định hướng rõ hơn cho quyết định.
+              </h1>
+              <p className="section-copy mt-4 max-w-3xl">
+                Tập trung vào NAV lịch sử, biểu đồ nến, Heikin-Ashi, so sánh peer group,
+                bảng lịch sử và biến động danh mục theo nhiều tháng trên cùng một màn hình.
+              </p>
+            </div>
           </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <MetricCard
+              label="Quỹ đang theo dõi"
+              value={String(funds.length)}
+              detail="Đã mở rộng catalog để phủ thêm SSIAM, Dragon Capital và VinaCapital."
+            />
+            <MetricCard
+              label="Quỹ đang chọn"
+              value={currentFund?.code ?? "N/A"}
+              detail={currentFund?.company ?? "Chưa chọn quỹ"}
+            />
+            <MetricCard
+              label="NAV gần nhất"
+              value={
+                navPayload?.metrics.latestNav !== null && navPayload?.metrics.latestNav !== undefined
+                  ? navPayload.metrics.latestNav.toLocaleString("vi-VN")
+                  : "N/A"
+              }
+              detail={navPayload?.metrics.latestDate ?? "Chưa có dữ liệu"}
+            />
+            <MetricCard
+              label="Biến động 1 tháng"
+              value={formatPercent(navPayload?.metrics.monthly.percent ?? null)}
+              detail={`1 quý ${formatPercent(navPayload?.metrics.quarterly.percent ?? null)}`}
+            />
+          </div>
+        </div>
+      </section>
 
-          {activeTab === 'nav' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100">
-                <div className="mb-6 flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-neutral-800">
-                    Biểu đồ NAV - {selectedFund}
+      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="space-y-4">
+          <div className="rounded-[1.75rem] border border-white/70 bg-white/75 p-4 shadow-[0_20px_46px_rgba(16,32,51,0.06)]">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-headline text-lg font-bold text-on-surface">Quỹ mở</h2>
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
+                Live catalog
+              </span>
+            </div>
+            <p className="mb-4 text-sm leading-7 text-on-surface-variant">
+              Chọn quỹ để xem đầy đủ panel NAV, biểu đồ, bảng lịch sử và biến động holdings.
+            </p>
+            <div className="space-y-3">
+              {funds.map((fund) => (
+                <FundCard
+                  key={fund.code}
+                  fundCode={fund.code}
+                  fundName={fund.name}
+                  company={fund.company}
+                  category={fund.category}
+                  nav={fund.nav}
+                  navDate={fund.nav_date}
+                  changePercent={fund.daily_change_percent}
+                  pointCount={fund.point_count}
+                  isActive={fund.code === selectedFund}
+                  onClick={() => {
+                    setSelectedFund(fund.code);
+                    setSelectedHoldingsDate(null);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <section className="space-y-6">
+          <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.35fr)_360px]">
+            <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
+              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                    Chart Lab
+                  </p>
+                  <h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">
+                    {currentFund?.name ?? "Chọn quỹ"}
                   </h2>
-                  {chartLoading && <span className="text-sm text-primary animate-pulse font-medium">Đang tải biểu đồ...</span>}
+                  <p className="mt-2 text-sm leading-7 text-on-surface-variant">
+                    Đổi nhanh giữa area, line, nến Nhật, Heikin-Ashi và đối chiếu peer group.
+                  </p>
                 </div>
-                {!chartLoading && chartData.length > 0 ? (
-                  <FundChart data={chartData} />
-                ) : (
-                  !chartLoading && <div className="h-[400px] flex items-center justify-center text-neutral-400 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">Chưa có đủ dữ liệu NAV cho quỹ này.</div>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {RANGE_OPTIONS.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setRange(item)}
+                      className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                        range === item
+                          ? "bg-on-surface text-white"
+                          : "border border-outline-variant/80 bg-white text-on-surface-variant"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="bg-gradient-to-br from-indigo-50 to-blue-50/50 p-6 rounded-2xl border border-indigo-100/60 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-100 rounded-full blur-3xl -mr-16 -mt-16 opacity-50"></div>
-                <h3 className="text-indigo-900 font-bold mb-3 flex items-center gap-2 text-lg">
-                  <span className="text-2xl">🤖</span> Nhận định tự động
-                </h3>
-                <div className="text-indigo-900/90 leading-relaxed text-sm md:text-base">
-                  {chartLoading ? (
-                     <div className="animate-pulse flex items-center gap-2">Hệ thống AI đang tổng hợp và phân tích dữ liệu...</div>
-                  ) : (
-                     <div dangerouslySetInnerHTML={renderMarkdown(insight || 'Chưa có nhận định nào.')} />
+              <div className="mb-5 flex flex-wrap gap-2">
+                {CHART_MODES.map((mode) => (
+                  <button
+                    key={mode.key}
+                    type="button"
+                    onClick={() => setChartMode(mode.key)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                      chartMode === mode.key
+                        ? "bg-primary text-white"
+                        : "border border-outline-variant/80 bg-white text-on-surface-variant"
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              {chartLoading ? (
+                <div className="flex h-[420px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low text-sm font-semibold text-on-surface-variant">
+                  Đang dựng biểu đồ NAV...
+                </div>
+              ) : chartSeries.length === 0 ? (
+                <div className="flex h-[420px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low text-sm font-semibold text-on-surface-variant">
+                  Chưa đủ dữ liệu NAV cho quỹ đang chọn.
+                </div>
+              ) : (
+                <>
+                  <FundChart
+                    data={chartSeries}
+                    mode={chartMode}
+                    comparisonSeries={comparisonSeries}
+                    candles={chartMode === "heikin" ? heikinAshi : candles}
+                  />
+                  {chartMode === "compare" && comparisonSeries.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      {comparisonSeries.map((series) => (
+                        <div
+                          key={series.code}
+                          className="inline-flex items-center gap-2 rounded-full border border-outline-variant/60 bg-white px-3 py-1.5 text-sm text-on-surface"
+                        >
+                          <span
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: series.color }}
+                          />
+                          {series.code}
+                        </div>
+                      ))}
+                    </div>
                   )}
+                </>
+              )}
+            </div>
+
+            <div className="space-y-5">
+              <div className="rounded-[2rem] border border-white/70 bg-[linear-gradient(180deg,rgba(12,122,105,0.1),rgba(31,77,183,0.06))] p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">
+                  Decision Snapshot
+                </p>
+                <div className="mt-4 grid gap-3">
+                  <InsightStat label="Ngày" value={formatPercent(navPayload?.metrics.daily.percent ?? null)} />
+                  <InsightStat label="1 tháng" value={formatPercent(navPayload?.metrics.monthly.percent ?? null)} />
+                  <InsightStat label="1 quý" value={formatPercent(navPayload?.metrics.quarterly.percent ?? null)} />
+                  <InsightStat
+                    label="Từ đầu chuỗi"
+                    value={formatPercent(navPayload?.metrics.sinceInception.percent ?? null)}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">
+                  AI Insight
+                </p>
+                <div className="mt-4 text-sm leading-7 text-on-surface">
+                  {chartLoading ? "Đang tổng hợp insight..." : navPayload?.ai_insight ?? "Chưa có insight."}
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
-          {activeTab === 'holdings' && (
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-bold text-neutral-800">
-                      Cơ cấu danh mục - {selectedFund}
-                    </h2>
-                    {holdingsDate && (
-                        <p className="text-sm text-neutral-500 mt-1">Báo cáo gần nhất: {new Date(holdingsDate).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long' })}</p>
-                    )}
-                  </div>
-                  
-                  {/* Lọc theo tháng lịch sử */}
-                  {availableDates.length > 0 && (
-                     <div className="flex items-center gap-3 bg-neutral-50 py-1.5 px-3 rounded-lg border border-neutral-200">
-                        <label className="text-sm font-medium text-neutral-600">Tháng:</label>
-                        <select 
-                          className="bg-transparent text-sm font-semibold outline-none cursor-pointer text-indigo-700"
-                          value={selectedHoldingsDate || holdingsDate || ''}
-                          onChange={(e) => setSelectedHoldingsDate(e.target.value)}
-                        >
-                          {availableDates.map(d => (
-                             <option key={d} value={d}>
-                               {new Date(d).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}
-                             </option>
-                          ))}
-                        </select>
-                     </div>
-                  )}
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                    NAV History
+                  </p>
+                  <h3 className="mt-2 font-headline text-xl font-extrabold text-on-surface">
+                    Bảng lịch sử và điểm kiểm soát dữ liệu
+                  </h3>
                 </div>
-                
+              </div>
+              <FundHistoryTable rows={historyRows} />
+            </div>
+
+            <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                Coverage
+              </p>
+              <div className="mt-4 space-y-3">
+                <MetricMini
+                  label="Số điểm NAV"
+                  value={String(navPayload?.metrics.pointCount ?? 0)}
+                  detail="Dùng để kiểm tra độ dày lịch sử."
+                />
+                <MetricMini
+                  label="Đỉnh chuỗi"
+                  value={
+                    navPayload?.metrics.high !== null && navPayload?.metrics.high !== undefined
+                      ? navPayload.metrics.high.toLocaleString("vi-VN")
+                      : "N/A"
+                  }
+                  detail="Mức NAV cao nhất trong chuỗi hiện có."
+                />
+                <MetricMini
+                  label="Đáy chuỗi"
+                  value={
+                    navPayload?.metrics.low !== null && navPayload?.metrics.low !== undefined
+                      ? navPayload.metrics.low.toLocaleString("vi-VN")
+                      : "N/A"
+                  }
+                  detail="Mức NAV thấp nhất trong chuỗi hiện có."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
+              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                    Holdings Delta Grid
+                  </p>
+                  <h3 className="mt-2 font-headline text-xl font-extrabold text-on-surface">
+                    So sánh T, T-1, T-2, T-3 trên cùng một bảng
+                  </h3>
+                </div>
+                {holdingsPayload?.availableDates?.length ? (
+                  <select
+                    value={selectedHoldingsDate ?? ""}
+                    onChange={(event) => setSelectedHoldingsDate(event.target.value)}
+                    className="rounded-full border border-outline-variant/70 bg-white px-4 py-2 text-sm font-semibold text-on-surface outline-none"
+                  >
+                    {holdingsPayload.availableDates.map((date) => (
+                      <option key={date} value={date}>
+                        {new Date(date).toLocaleDateString("vi-VN", {
+                          month: "2-digit",
+                          year: "numeric",
+                        })}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
+
+              {holdingsLoading ? (
+                <div className="flex h-[360px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low text-sm font-semibold text-on-surface-variant">
+                  Đang tải lịch sử holdings...
+                </div>
+              ) : (
+                <HoldingsComparisonTable
+                  dates={holdingsPayload?.comparisonDates ?? []}
+                  rows={holdingsPayload?.comparisonRows ?? []}
+                />
+              )}
+            </div>
+
+            <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                Holdings Composition
+              </p>
+              <h3 className="mt-2 font-headline text-xl font-extrabold text-on-surface">
+                Top tỷ trọng hiện tại
+              </h3>
+              <div className="mt-4">
                 {holdingsLoading ? (
-                    <div className="h-[400px] flex items-center justify-center text-primary animate-pulse font-medium">Đang truy xuất dữ liệu từ trung tâm lưu trữ...</div>
+                  <div className="flex h-[420px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low text-sm font-semibold text-on-surface-variant">
+                    Đang tải danh mục...
+                  </div>
                 ) : (
-                    <FundHoldingsPie data={holdings} />
+                  <FundHoldingsPie data={holdingsPayload?.data ?? []} />
                 )}
               </div>
-          )}
-        </div>
+            </div>
+          </div>
+        </section>
       </div>
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-[1.6rem] border border-white/70 bg-white/80 p-4">
+      <div className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+        {label}
+      </div>
+      <div className="mt-2 font-headline text-2xl font-extrabold text-on-surface">{value}</div>
+      <div className="mt-2 text-sm leading-6 text-on-surface-variant">{detail}</div>
+    </div>
+  );
+}
+
+function InsightStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-[1.25rem] bg-white/70 px-4 py-3">
+      <span className="text-sm font-medium text-on-surface-variant">{label}</span>
+      <span className="font-headline text-lg font-extrabold text-on-surface">{value}</span>
+    </div>
+  );
+}
+
+function MetricMini({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-[1.4rem] border border-outline-variant/50 bg-surface-container-low p-4">
+      <div className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+        {label}
+      </div>
+      <div className="mt-2 font-headline text-xl font-extrabold text-on-surface">{value}</div>
+      <div className="mt-2 text-sm leading-6 text-on-surface-variant">{detail}</div>
     </div>
   );
 }
