@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getFundCatalogEntry } from "@/lib/fundCatalog";
-import { calculateChange, sanitizeNavHistory } from "@/lib/fundAnalytics";
+import {
+  calculateChange,
+  calculateNavMetrics,
+  sanitizeNavHistory,
+} from "@/lib/fundAnalytics";
 import { getFundDataset } from "@/lib/fundDataStore";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +23,7 @@ export async function GET() {
         latest ? Number(latest.nav) : null,
         previous ? Number(previous.nav) : null,
       );
+      const metrics = calculateNavMetrics(history);
       const catalog = getFundCatalogEntry(fund.code);
 
       return {
@@ -29,6 +34,8 @@ export async function GET() {
         nav: latest ? Number(latest.nav) : null,
         nav_date: latest?.date ?? null,
         daily_change_percent: daily.percent,
+        monthly_change_percent: metrics.monthly.percent,
+        quarterly_change_percent: metrics.quarterly.percent,
         point_count: history.length,
         data_status: history.length > 0 ? "ready" : "missing",
         data_issue:
@@ -40,10 +47,13 @@ export async function GET() {
     });
 
     results.sort((left, right) => {
-      const availabilityScore =
-        Number(right.point_count > 0) - Number(left.point_count > 0);
+      const availabilityScore = Number(right.point_count > 0) - Number(left.point_count > 0);
       if (availabilityScore !== 0) {
         return availabilityScore;
+      }
+
+      if ((right.quarterly_change_percent ?? -Infinity) !== (left.quarterly_change_percent ?? -Infinity)) {
+        return (right.quarterly_change_percent ?? -Infinity) - (left.quarterly_change_percent ?? -Infinity);
       }
 
       if (left.priority !== right.priority) {

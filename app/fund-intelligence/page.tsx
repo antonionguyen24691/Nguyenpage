@@ -24,6 +24,8 @@ type Fund = {
   nav: number | null;
   nav_date: string | null;
   daily_change_percent: number | null;
+  monthly_change_percent?: number | null;
+  quarterly_change_percent?: number | null;
   point_count: number;
   data_status?: "ready" | "missing";
   data_issue?: string | null;
@@ -55,6 +57,21 @@ type NavPayload = {
   };
   comparison: Record<string, ChartPoint[]>;
   peerCodes: string[];
+  benchmark?: {
+    code: string;
+    label: string;
+    metrics: {
+      latestNav: number | null;
+      latestDate: string | null;
+      daily: { percent: number | null };
+      monthly: { percent: number | null };
+      quarterly: { percent: number | null };
+      sinceInception: { percent: number | null };
+      high: number | null;
+      low: number | null;
+      pointCount: number;
+    };
+  };
   ai_insight: string;
 };
 
@@ -222,7 +239,10 @@ export default function FundIntelligenceDashboard() {
           .filter(([, data]) => data.length > 0)
           .map(([code, data], index) => ({
             code: code === "self" ? selectedFund ?? "SELF" : code,
-            color: COMPARE_COLORS[index % COMPARE_COLORS.length],
+            color:
+              code === "VNINDEX"
+                ? "#f59e0b"
+                : COMPARE_COLORS[index % COMPARE_COLORS.length],
             data: filterSeriesByRange(data, range),
           }))
       : [];
@@ -233,6 +253,9 @@ export default function FundIntelligenceDashboard() {
     () => parseInsightSections(navPayload?.ai_insight),
     [navPayload?.ai_insight],
   );
+  const benchmarkSeries = navPayload?.comparison?.VNINDEX
+    ? filterSeriesByRange(navPayload.comparison.VNINDEX, range)
+    : [];
   const fallbackFunds = useMemo(() => {
     if (!currentFund) {
       return [];
@@ -246,6 +269,22 @@ export default function FundIntelligenceDashboard() {
       )
       .slice(0, 3);
   }, [currentFund, funds]);
+  const suggestedFunds = useMemo(
+    () =>
+      funds
+        .filter((fund) => fund.point_count > 60)
+        .sort((left, right) => {
+          const quarterDiff =
+            (right.quarterly_change_percent ?? -Infinity) - (left.quarterly_change_percent ?? -Infinity);
+          if (quarterDiff !== 0) {
+            return quarterDiff;
+          }
+
+          return (right.monthly_change_percent ?? -Infinity) - (left.monthly_change_percent ?? -Infinity);
+        })
+        .slice(0, 3),
+    [funds],
+  );
 
   function handleSelectFund(fundCode: string) {
     setSelectedFund(fundCode);
@@ -310,6 +349,54 @@ export default function FundIntelligenceDashboard() {
               detail={`1 quý ${formatPercent(navPayload?.metrics.quarterly.percent ?? null)}`}
             />
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+              Gợi ý theo dõi
+            </p>
+            <h2 className="mt-2 font-headline text-xl font-extrabold text-on-surface">
+              3 quỹ đang có định hướng dữ liệu tốt trong thị trường hiện tại
+            </h2>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          {suggestedFunds.map((fund) => (
+            <button
+              key={fund.code}
+              type="button"
+              onClick={() => handleSelectFund(fund.code)}
+              className="rounded-[1.5rem] border border-outline-variant/40 bg-surface-container-low p-4 text-left transition hover:border-primary/40 hover:bg-white"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-bold text-on-surface">{fund.code}</div>
+                  <div className="mt-1 text-xs uppercase tracking-[0.16em] text-on-surface-variant">
+                    {fund.company}
+                  </div>
+                </div>
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                  1 quý {formatPercent(fund.quarterly_change_percent ?? null)}
+                </span>
+              </div>
+              <div className="mt-4 text-lg font-extrabold text-on-surface">{fund.name}</div>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-2xl bg-white px-3 py-2">
+                  <div className="text-xs text-on-surface-variant">Biến động 1 tháng</div>
+                  <div className="mt-1 font-semibold text-on-surface">
+                    {formatPercent(fund.monthly_change_percent ?? null)}
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-white px-3 py-2">
+                  <div className="text-xs text-on-surface-variant">Điểm NAV</div>
+                  <div className="mt-1 font-semibold text-on-surface">{fund.point_count}</div>
+                </div>
+              </div>
+            </button>
+          ))}
         </div>
       </section>
 
@@ -448,7 +535,22 @@ export default function FundIntelligenceDashboard() {
                         mode={chartMode}
                         comparisonSeries={comparisonSeries}
                         candles={chartMode === "heikin" ? heikinAshi : candles}
+                        benchmarkSeries={chartMode === "compare" ? [] : benchmarkSeries}
                       />
+                      {navPayload?.benchmark ? (
+                        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+                          <div className="inline-flex items-center gap-2 rounded-full border border-outline-variant/60 bg-white px-3 py-1.5 text-on-surface">
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b]" />
+                            Tham chiếu VN-Index
+                          </div>
+                          <div className="rounded-full border border-outline-variant/60 bg-white px-3 py-1.5 text-on-surface-variant">
+                            1 tháng: {formatPercent(navPayload.benchmark.metrics.monthly.percent)}
+                          </div>
+                          <div className="rounded-full border border-outline-variant/60 bg-white px-3 py-1.5 text-on-surface-variant">
+                            1 quý: {formatPercent(navPayload.benchmark.metrics.quarterly.percent)}
+                          </div>
+                        </div>
+                      ) : null}
                       {chartMode === "compare" && comparisonSeries.length > 0 ? (
                         <div className="mt-4 flex flex-wrap gap-3">
                           {comparisonSeries.map((series) => (
@@ -460,7 +562,7 @@ export default function FundIntelligenceDashboard() {
                                 className="h-2.5 w-2.5 rounded-full"
                                 style={{ backgroundColor: series.color }}
                               />
-                              {series.code}
+                              {series.code === "VNINDEX" ? "VN-Index" : series.code}
                             </div>
                           ))}
                         </div>

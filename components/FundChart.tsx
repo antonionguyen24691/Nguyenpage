@@ -19,6 +19,7 @@ type FundChartProps = {
     data: ChartPoint[];
   }>;
   candles?: CandlePoint[];
+  benchmarkSeries?: ChartPoint[];
 };
 
 function formatTime(value: string) {
@@ -30,6 +31,7 @@ export default function FundChart({
   mode,
   comparisonSeries = [],
   candles = [],
+  benchmarkSeries = [],
 }: FundChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
@@ -108,6 +110,20 @@ export default function FundChart({
           value: item.value,
         })),
       );
+      if (benchmarkSeries.length > 1) {
+        const benchmark = chart.addSeries(LineSeries, {
+          color: "#f59e0b",
+          lineWidth: 2,
+          lineStyle: 2,
+          priceScaleId: "left",
+        });
+        benchmark.setData(
+          benchmarkSeries.map((item) => ({
+            time: formatTime(item.time),
+            value: item.value,
+          })),
+        );
+      }
     } else {
       const series = chart.addSeries(AreaSeries, {
         lineColor: "#0c7a69",
@@ -121,6 +137,20 @@ export default function FundChart({
           value: item.value,
         })),
       );
+      if (benchmarkSeries.length > 1) {
+        const benchmark = chart.addSeries(LineSeries, {
+          color: "#f59e0b",
+          lineWidth: 2,
+          lineStyle: 2,
+          priceScaleId: "left",
+        });
+        benchmark.setData(
+          benchmarkSeries.map((item) => ({
+            time: formatTime(item.time),
+            value: item.value,
+          })),
+        );
+      }
     }
 
     chart.timeScale().fitContent();
@@ -139,7 +169,7 @@ export default function FundChart({
       window.removeEventListener("resize", handleResize);
       chart.remove();
     };
-  }, [candles, comparisonSeries, data, mode]);
+  }, [benchmarkSeries, candles, comparisonSeries, data, mode]);
 
   return (
     <div

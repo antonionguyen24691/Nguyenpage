@@ -6,6 +6,7 @@ import {
   sanitizeNavHistory,
 } from "@/lib/fundAnalytics";
 import { getFundDataset } from "@/lib/fundDataStore";
+import { fetchVnIndexSeries } from "@/lib/marketIndex";
 import { analyzeFund } from "../../../packages/ai/fund-analysis";
 
 export const dynamic = "force-dynamic";
@@ -53,17 +54,27 @@ export async function GET(request: Request) {
           .slice(0, 10)
       : [];
 
-    const peerCodes = compareList?.length
-      ? compareList
-      : getPeerFundCodes(normalizedFundCode, 3);
+    const peerCodes = compareList?.length ? compareList : getPeerFundCodes(normalizedFundCode, 3);
     const peers = Object.fromEntries(
       peerCodes.map((code) => [
         code,
         sanitizeNavHistory(dataset.nav.filter((row) => row.fund_code === code)),
       ]),
     );
-    const comparison = buildComparisonSeries(navData, peers);
+    const vnIndexSeries = await fetchVnIndexSeries(days > 0 ? days : 365);
+    const benchmarkNavData = vnIndexSeries.map((item) => ({
+      fund_code: "VNINDEX",
+      nav: item.value,
+      date: item.time,
+      source: "VNDIRECT",
+    }));
+
+    const comparison = buildComparisonSeries(navData, {
+      VNINDEX: benchmarkNavData,
+      ...peers,
+    });
     const metrics = calculateNavMetrics(navData);
+    const benchmarkMetrics = calculateNavMetrics(benchmarkNavData);
 
     const analysis = await analyzeFund({
       fundCode: normalizedFundCode,
@@ -79,7 +90,12 @@ export async function GET(request: Request) {
       data: navData,
       metrics,
       comparison,
-      peerCodes,
+      peerCodes: ["VNINDEX", ...peerCodes.filter((code) => code !== "VNINDEX")],
+      benchmark: {
+        code: "VNINDEX",
+        label: "VN-Index",
+        metrics: benchmarkMetrics,
+      },
       ai_insight: analysis,
     });
   } catch (error: unknown) {
