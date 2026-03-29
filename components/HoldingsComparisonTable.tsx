@@ -23,7 +23,7 @@ export default function HoldingsComparisonTable({ dates, rows }: Props) {
   if (!dates.length || !rows.length) {
     return (
       <div className="rounded-[1.5rem] border border-dashed border-outline-variant/80 bg-white/70 p-6 text-sm text-on-surface-variant">
-        Chua co du du lieu de so sanh T, T-1, T-2, T-3.
+        Chưa có đủ dữ liệu để so sánh T, T-1, T-2, T-3.
       </div>
     );
   }
@@ -36,13 +36,13 @@ export default function HoldingsComparisonTable({ dates, rows }: Props) {
             className="grid gap-3 border-b border-outline-variant/40 px-4 py-4 text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant md:px-5"
             style={{ gridTemplateColumns: `1.1fr repeat(${dates.length}, 0.75fr) 0.8fr 0.9fr 0.9fr 0.8fr` }}
           >
-            <span>Ma</span>
+            <span>Mã</span>
             {dates.map((date, index) => (
               <span key={date}>{index === 0 ? "T" : `T-${index}`}</span>
             ))}
-            <span>Delta</span>
-            <span>Gia hien tai</span>
-            <span>Gia 1M</span>
+            <span>Chênh lệch</span>
+            <span>Giá hiện tại</span>
+            <span>Giá 1 tháng</span>
             <span>+/- 1M</span>
           </div>
           <div className="max-h-[360px] overflow-y-auto">

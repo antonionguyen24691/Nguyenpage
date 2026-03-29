@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import FundCard from "@/components/FundCard";
 import FundChart from "@/components/FundChart";
 import FundHoldingsPie from "@/components/FundHoldingsPie";
@@ -25,6 +25,8 @@ type Fund = {
   nav_date: string | null;
   daily_change_percent: number | null;
   point_count: number;
+  data_status?: "ready" | "missing";
+  data_issue?: string | null;
 };
 
 type Holding = {
@@ -64,13 +66,18 @@ type HoldingsPayload = {
   comparisonRows: HoldingsComparisonRow[];
 };
 
+type InsightSection = {
+  title: string;
+  body: string[];
+};
+
 const RANGE_OPTIONS = ["1M", "3M", "6M", "1Y", "ALL"] as const;
 const CHART_MODES = [
-  { key: "area", label: "Area" },
-  { key: "line", label: "Line" },
-  { key: "candles", label: "Nen Nhat" },
+  { key: "area", label: "Miền" },
+  { key: "line", label: "Đường" },
+  { key: "candles", label: "Nến Nhật" },
   { key: "heikin", label: "Heikin-Ashi" },
-  { key: "compare", label: "Doi chieu" },
+  { key: "compare", label: "Đối chiếu" },
 ] as const;
 const COMPARE_COLORS = ["#0c7a69", "#1f4db7", "#b86f31", "#c73a3a"];
 const MOBILE_BREAKPOINT = "(max-width: 1279px)";
@@ -84,6 +91,44 @@ function formatMonthLabel(value: string) {
     month: "2-digit",
     year: "numeric",
   });
+}
+
+function parseInsightSections(text: string | null | undefined): InsightSection[] {
+  if (!text?.trim()) {
+    return [];
+  }
+
+  const lines = text
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const sections: InsightSection[] = [];
+  let current: InsightSection | null = null;
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^\*\*(.+?)\*\*$/);
+    if (headingMatch) {
+      if (current) {
+        sections.push(current);
+      }
+      current = { title: headingMatch[1], body: [] };
+      continue;
+    }
+
+    if (!current) {
+      current = { title: "Tóm tắt", body: [] };
+    }
+
+    current.body.push(line);
+  }
+
+  if (current) {
+    sections.push(current);
+  }
+
+  return sections;
 }
 
 export default function FundIntelligenceDashboard() {
@@ -125,7 +170,8 @@ export default function FundIntelligenceDashboard() {
       return;
     }
 
-    setSelectedFund(funds[0].code);
+    const preferredFund = funds.find((fund) => fund.point_count > 0) ?? funds[0];
+    setSelectedFund(preferredFund.code);
   }, [funds, isCompact, selectedFund]);
 
   useEffect(() => {
@@ -183,6 +229,10 @@ export default function FundIntelligenceDashboard() {
   const historyRows = navPayload ? [...navPayload.data].slice(-40).reverse() : [];
   const comparisonDates = holdingsPayload?.comparisonDates ?? [];
   const comparisonRows = holdingsPayload?.comparisonRows ?? [];
+  const insightSections = useMemo(
+    () => parseInsightSections(navPayload?.ai_insight),
+    [navPayload?.ai_insight],
+  );
 
   function handleSelectFund(fundCode: string) {
     setSelectedFund(fundCode);
@@ -199,7 +249,7 @@ export default function FundIntelligenceDashboard() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="rounded-full border border-outline-variant/70 bg-white/80 px-5 py-3 text-sm font-semibold text-on-surface">
-          Dang tai trung tam du lieu quy...
+          Đang tải trung tâm dữ liệu quỹ...
         </div>
       </div>
     );
@@ -210,14 +260,14 @@ export default function FundIntelligenceDashboard() {
       <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(243,247,255,0.82))] p-6 shadow-[0_24px_60px_rgba(16,32,51,0.08)] md:p-8">
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-5">
-            <span className="section-kicker">Fund Intelligence</span>
+            <span className="section-kicker">Trung tâm dữ liệu quỹ</span>
             <div>
               <h1 className="section-title max-w-4xl">
-                Dashboard quỹ mở hiện đại, nhiều lớp dữ liệu và dễ dùng hơn trên mobile.
+                Theo dõi NAV, danh mục, đối chiếu nhóm quỹ và tín hiệu vận động trên cùng một màn hình.
               </h1>
               <p className="section-copy mt-4 max-w-3xl">
-                Tập trung vào NAV lịch sử, biểu đồ nến, Heikin-Ashi, đối chiếu peer group, bảng lịch sử
-                và biến động holdings theo nhiều tháng trên cùng một màn hình.
+                Giao diện này tập trung vào chuỗi NAV lịch sử, biểu đồ nến, Heikin-Ashi, bảng NAV,
+                so sánh T/T-1/T-2/T-3 cho holdings và phần nhận định tách rõ từng lớp thông tin.
               </p>
             </div>
           </div>
@@ -225,12 +275,12 @@ export default function FundIntelligenceDashboard() {
             <MetricCard
               label="Quỹ đang theo dõi"
               value={String(funds.length)}
-              detail="Catalog đã mở rộng để phủ thêm SSIAM, Dragon Capital và VinaCapital."
+              detail="Danh mục đã mở rộng cho SSIAM, Dragon Capital và VinaCapital."
             />
             <MetricCard
               label="Quỹ đang chọn"
-              value={currentFund?.code ?? (isCompact ? "Chua chon" : "N/A")}
-              detail={currentFund?.company ?? "Bam vao mot the quy de xem chi tiet"}
+              value={currentFund?.code ?? (isCompact ? "Chưa chọn" : "N/A")}
+              detail={currentFund?.company ?? "Bấm vào một thẻ quỹ để xem chi tiết"}
             />
             <MetricCard
               label="NAV gần nhất"
@@ -239,12 +289,12 @@ export default function FundIntelligenceDashboard() {
                   ? navPayload.metrics.latestNav.toLocaleString("vi-VN")
                   : "N/A"
               }
-              detail={navPayload?.metrics.latestDate ?? "Chua co du lieu"}
+              detail={navPayload?.metrics.latestDate ?? "Chưa có dữ liệu"}
             />
             <MetricCard
               label="Biến động 1 tháng"
               value={formatPercent(navPayload?.metrics.monthly.percent ?? null)}
-              detail={`1 quy ${formatPercent(navPayload?.metrics.quarterly.percent ?? null)}`}
+              detail={`1 quý ${formatPercent(navPayload?.metrics.quarterly.percent ?? null)}`}
             />
           </div>
         </div>
@@ -256,13 +306,13 @@ export default function FundIntelligenceDashboard() {
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-headline text-lg font-bold text-on-surface">Quỹ mở</h2>
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
-                Live catalog
+                Danh mục trực tiếp
               </span>
             </div>
             <p className="mb-4 text-sm leading-7 text-on-surface-variant">
               {isCompact
-                ? "Trên mobile, bấm vào từng quỹ để mở panel chi tiết, chart, NAV history và holdings."
-                : "Chọn quỹ để xem đầy đủ panel NAV, biểu đồ, bảng lịch sử và biến động holdings."}
+                ? "Trên mobile, bấm vào từng quỹ để mở khu vực biểu đồ, lịch sử NAV, nhận định và danh mục."
+                : "Các quỹ chưa có nguồn dữ liệu sẽ được đẩy xuống cuối và hiển thị trạng thái rõ ràng."}
             </p>
             <div className="space-y-3">
               {funds.map((fund) => (
@@ -276,6 +326,7 @@ export default function FundIntelligenceDashboard() {
                   navDate={fund.nav_date}
                   changePercent={fund.daily_change_percent}
                   pointCount={fund.point_count}
+                  dataIssue={fund.data_issue}
                   isActive={fund.code === selectedFund}
                   onClick={() => handleSelectFund(fund.code)}
                 />
@@ -287,7 +338,7 @@ export default function FundIntelligenceDashboard() {
         <section ref={detailSectionRef} className="space-y-6">
           {isCompact && !selectedFund ? (
             <div className="rounded-[2rem] border border-dashed border-outline-variant/70 bg-white/70 p-6 text-sm leading-7 text-on-surface-variant">
-              Chọn một quỹ ở cột bên trái để xem chart, NAV history, AI insight và holdings.
+              Chọn một quỹ ở cột bên trái để xem biểu đồ, lịch sử NAV, nhận định và biến động danh mục.
             </div>
           ) : (
             <>
@@ -296,13 +347,13 @@ export default function FundIntelligenceDashboard() {
                   <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                        Chart Lab
+                        Trung tâm biểu đồ
                       </p>
                       <h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">
-                        {currentFund?.name ?? "Chon quy"}
+                        {currentFund?.name ?? "Chọn quỹ"}
                       </h2>
                       <p className="mt-2 text-sm leading-7 text-on-surface-variant">
-                        Đổi nhanh giữa area, line, nến Nhật, Heikin-Ashi và đối chiếu peer group.
+                        Chuyển nhanh giữa biểu đồ miền, đường, nến Nhật, Heikin-Ashi và đối chiếu nhóm quỹ.
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -342,11 +393,11 @@ export default function FundIntelligenceDashboard() {
 
                   {chartLoading ? (
                     <div className="flex h-[320px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low text-sm font-semibold text-on-surface-variant md:h-[420px]">
-                      Dang dung bieu do NAV...
+                      Đang dựng biểu đồ NAV...
                     </div>
                   ) : chartSeries.length === 0 ? (
-                    <div className="flex h-[320px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low text-sm font-semibold text-on-surface-variant md:h-[420px]">
-                      Chua du du lieu NAV cho quy dang chon.
+                    <div className="flex h-[320px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-6 text-center text-sm font-semibold text-on-surface-variant md:h-[420px]">
+                      {currentFund?.data_issue ?? "Chưa đủ dữ liệu NAV cho quỹ đang chọn."}
                     </div>
                   ) : (
                     <>
@@ -379,14 +430,14 @@ export default function FundIntelligenceDashboard() {
                 <div className="space-y-5">
                   <div className="rounded-[2rem] border border-white/70 bg-[linear-gradient(180deg,rgba(12,122,105,0.1),rgba(31,77,183,0.06))] p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
                     <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">
-                      Decision Snapshot
+                      Ảnh chụp nhanh
                     </p>
                     <div className="mt-4 grid gap-3">
-                      <InsightStat label="Ngay" value={formatPercent(navPayload?.metrics.daily.percent ?? null)} />
-                      <InsightStat label="1 thang" value={formatPercent(navPayload?.metrics.monthly.percent ?? null)} />
-                      <InsightStat label="1 quy" value={formatPercent(navPayload?.metrics.quarterly.percent ?? null)} />
+                      <InsightStat label="Ngày" value={formatPercent(navPayload?.metrics.daily.percent ?? null)} />
+                      <InsightStat label="1 tháng" value={formatPercent(navPayload?.metrics.monthly.percent ?? null)} />
+                      <InsightStat label="1 quý" value={formatPercent(navPayload?.metrics.quarterly.percent ?? null)} />
                       <InsightStat
-                        label="Tu dau chuoi"
+                        label="Từ đầu chuỗi"
                         value={formatPercent(navPayload?.metrics.sinceInception.percent ?? null)}
                       />
                     </div>
@@ -394,11 +445,15 @@ export default function FundIntelligenceDashboard() {
 
                   <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
                     <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">
-                      AI Insight
+                      Nhận định AI
                     </p>
-                    <div className="mt-4 text-sm leading-7 text-on-surface">
-                      {chartLoading ? "Dang tong hop insight..." : navPayload?.ai_insight ?? "Chua co insight."}
-                    </div>
+                    {chartLoading ? (
+                      <div className="mt-4 text-sm leading-7 text-on-surface-variant">
+                        Đang tổng hợp nhận định...
+                      </div>
+                    ) : (
+                      <InsightSections sections={insightSections} />
+                    )}
                   </div>
                 </div>
               </div>
@@ -408,10 +463,10 @@ export default function FundIntelligenceDashboard() {
                   <div className="mb-4 flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                        NAV History
+                        Lịch sử NAV
                       </p>
                       <h3 className="mt-2 font-headline text-xl font-extrabold text-on-surface">
-                        Bảng lịch sử và điểm kiểm soát dữ liệu
+                        Bảng lịch sử và nguồn dữ liệu
                       </h3>
                     </div>
                   </div>
@@ -420,31 +475,31 @@ export default function FundIntelligenceDashboard() {
 
                 <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                    Coverage
+                    Độ phủ dữ liệu
                   </p>
                   <div className="mt-4 space-y-3">
                     <MetricMini
-                      label="So diem NAV"
+                      label="Số điểm NAV"
                       value={String(navPayload?.metrics.pointCount ?? 0)}
-                      detail="Dung de kiem tra do day lich su."
+                      detail="Dùng để kiểm tra độ dày chuỗi lịch sử."
                     />
                     <MetricMini
-                      label="Dinh chuoi"
+                      label="Đỉnh chuỗi"
                       value={
                         navPayload?.metrics.high !== null && navPayload?.metrics.high !== undefined
                           ? navPayload.metrics.high.toLocaleString("vi-VN")
                           : "N/A"
                       }
-                      detail="Muc NAV cao nhat trong chuoi hien co."
+                      detail="Mức NAV cao nhất trong chuỗi hiện có."
                     />
                     <MetricMini
-                      label="Day chuoi"
+                      label="Đáy chuỗi"
                       value={
                         navPayload?.metrics.low !== null && navPayload?.metrics.low !== undefined
                           ? navPayload.metrics.low.toLocaleString("vi-VN")
                           : "N/A"
                       }
-                      detail="Muc NAV thap nhat trong chuoi hien co."
+                      detail="Mức NAV thấp nhất trong chuỗi hiện có."
                     />
                   </div>
                 </div>
@@ -455,7 +510,7 @@ export default function FundIntelligenceDashboard() {
                   <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                        Holdings Delta Grid
+                        Biến động danh mục
                       </p>
                       <h3 className="mt-2 font-headline text-xl font-extrabold text-on-surface">
                         So sánh T, T-1, T-2, T-3 trên cùng một bảng
@@ -478,13 +533,13 @@ export default function FundIntelligenceDashboard() {
 
                   {holdingsLoading ? (
                     <div className="flex h-[360px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low text-sm font-semibold text-on-surface-variant">
-                      Dang tai lich su holdings...
+                      Đang tải lịch sử danh mục...
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {comparisonDates.length === 1 ? (
                         <div className="rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                          Hiện mới có 1 kỳ holdings ở {formatMonthLabel(comparisonDates[0])}. Chưa có dữ liệu
+                          Hiện mới có 1 kỳ danh mục ở {formatMonthLabel(comparisonDates[0])}. Chưa có dữ liệu
                           T-2, T-3 thật để so sánh.
                         </div>
                       ) : null}
@@ -495,7 +550,7 @@ export default function FundIntelligenceDashboard() {
 
                 <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                    Holdings Composition
+                    Cơ cấu danh mục
                   </p>
                   <h3 className="mt-2 font-headline text-xl font-extrabold text-on-surface">
                     Top tỷ trọng hiện tại
@@ -503,7 +558,7 @@ export default function FundIntelligenceDashboard() {
                   <div className="mt-4">
                     {holdingsLoading ? (
                       <div className="flex h-[320px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low text-sm font-semibold text-on-surface-variant md:h-[420px]">
-                        Dang tai danh muc...
+                        Đang tải danh mục...
                       </div>
                     ) : (
                       <FundHoldingsPie data={holdingsPayload?.data ?? []} />
@@ -564,6 +619,30 @@ function MetricMini({
       </div>
       <div className="mt-2 font-headline text-xl font-extrabold text-on-surface">{value}</div>
       <div className="mt-2 text-sm leading-6 text-on-surface-variant">{detail}</div>
+    </div>
+  );
+}
+
+function InsightSections({ sections }: { sections: InsightSection[] }) {
+  if (!sections.length) {
+    return <div className="mt-4 text-sm leading-7 text-on-surface-variant">Chưa có nhận định.</div>;
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      {sections.map((section) => (
+        <div
+          key={section.title}
+          className="rounded-[1.25rem] border border-outline-variant/40 bg-surface-container-low px-4 py-4"
+        >
+          <div className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{section.title}</div>
+          <div className="mt-2 space-y-2 text-sm leading-7 text-on-surface">
+            {section.body.map((paragraph) => (
+              <p key={`${section.title}-${paragraph}`}>{paragraph}</p>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

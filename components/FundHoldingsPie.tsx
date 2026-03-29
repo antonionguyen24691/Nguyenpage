@@ -25,17 +25,25 @@ const COLORS = [
   "#94a3b8",
 ];
 
+function formatPrice(value: number | null | undefined) {
+  return value === null || value === undefined ? "N/A" : value.toLocaleString("vi-VN");
+}
+
+function formatMonthChange(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "N/A";
+  }
+
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
 export default function FundHoldingsPie({ data }: { data: Holding[] }) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex h-[320px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low text-sm text-on-surface-variant md:h-[420px]">
-        Chua co du lieu danh muc cho ky bao cao dang chon.
+      <div className="flex h-[320px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-6 text-sm text-on-surface-variant md:h-[420px]">
+        Chưa có dữ liệu danh mục cho kỳ báo cáo đang chọn.
       </div>
     );
-  }
-
-  function formatPrice(value: number | null | undefined) {
-    return value === null || value === undefined ? "N/A" : value.toLocaleString("vi-VN");
   }
 
   const topData = data.slice(0, 10).map((item) => ({
@@ -45,12 +53,18 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
   const othersWeight = data.slice(10).reduce((sum, item) => sum + Number(item.weight), 0);
 
   if (othersWeight > 0) {
-    topData.push({ stock_code: "Khac", weight: othersWeight });
+    topData.push({
+      stock_code: "Khác",
+      weight: othersWeight,
+      currentPrice: null,
+      monthAgoPrice: null,
+      monthChangePercent: null,
+    });
   }
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
-      <div className="relative h-[280px] w-full sm:h-[320px] lg:w-1/2">
+    <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="relative mx-auto h-[280px] w-full max-w-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -59,8 +73,8 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
               nameKey="stock_code"
               cx="50%"
               cy="50%"
-              innerRadius={64}
-              outerRadius={104}
+              innerRadius={72}
+              outerRadius={112}
               paddingAngle={2}
               stroke="none"
             >
@@ -69,7 +83,7 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value) => [`${Number(value ?? 0).toFixed(2)}%`, "Ty trong"]}
+              formatter={(value) => [`${Number(value ?? 0).toFixed(2)}%`, "Tỷ trọng"]}
               contentStyle={{
                 borderRadius: "16px",
                 border: "1px solid rgba(215,223,234,0.9)",
@@ -80,48 +94,64 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-center text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-            Tong ty trong
+            Tổng tỷ trọng
           </span>
           <span className="mt-2 font-headline text-2xl font-extrabold text-on-surface">100%</span>
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2">
+      <div>
         <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-          Top holdings
+          Top tỷ trọng hiện tại
         </div>
-        <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
           {topData.map((item, index) => (
             <div
               key={item.stock_code}
-              className="flex items-center gap-3 rounded-[1.1rem] border border-outline-variant/40 bg-surface-container-low px-4 py-3"
+              className="rounded-[1.1rem] border border-outline-variant/40 bg-surface-container-low px-4 py-4"
             >
-              <span
-                className="h-3 w-3 shrink-0 rounded-full"
-                style={{ backgroundColor: COLORS[index % COLORS.length] }}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-semibold text-on-surface">{item.stock_code}</div>
-                <div className="mt-1 text-xs text-on-surface-variant">
-                  Gia hien tai {formatPrice(item.currentPrice)} | 1M {formatPrice(item.monthAgoPrice)}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className="mt-1 h-3 w-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-on-surface">{item.stock_code}</div>
+                    <div className="mt-1 text-xs text-on-surface-variant">Tỷ trọng hiện tại</div>
+                  </div>
+                </div>
+                <div className="shrink-0 text-right text-lg font-extrabold text-on-surface">
+                  {item.weight.toFixed(2)}%
                 </div>
               </div>
-              <div className="shrink-0 text-right">
-                <div className="text-sm font-semibold text-on-surface-variant">{item.weight.toFixed(2)}%</div>
-                <div
-                  className={`mt-1 text-xs ${
-                    item.monthChangePercent === null || item.monthChangePercent === undefined
-                      ? "text-on-surface-variant"
-                      : item.monthChangePercent >= 0
-                        ? "text-primary"
-                        : "text-[var(--color-error)]"
-                  }`}
-                >
-                  {item.monthChangePercent === null || item.monthChangePercent === undefined
-                    ? "N/A"
-                    : `${item.monthChangePercent >= 0 ? "+" : ""}${item.monthChangePercent.toFixed(2)}%`}
+
+              {item.stock_code !== "Khác" ? (
+                <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                  <div className="rounded-2xl bg-white/75 px-3 py-2">
+                    <div className="text-xs text-on-surface-variant">Giá hiện tại</div>
+                    <div className="mt-1 font-semibold text-on-surface">{formatPrice(item.currentPrice)}</div>
+                  </div>
+                  <div className="rounded-2xl bg-white/75 px-3 py-2">
+                    <div className="text-xs text-on-surface-variant">Giá 1 tháng</div>
+                    <div className="mt-1 font-semibold text-on-surface">{formatPrice(item.monthAgoPrice)}</div>
+                  </div>
+                  <div className="rounded-2xl bg-white/75 px-3 py-2">
+                    <div className="text-xs text-on-surface-variant">Biến động 1 tháng</div>
+                    <div
+                      className={`mt-1 font-semibold ${
+                        item.monthChangePercent === null || item.monthChangePercent === undefined
+                          ? "text-on-surface"
+                          : item.monthChangePercent >= 0
+                            ? "text-primary"
+                            : "text-[var(--color-error)]"
+                      }`}
+                    >
+                      {formatMonthChange(item.monthChangePercent)}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
           ))}
         </div>

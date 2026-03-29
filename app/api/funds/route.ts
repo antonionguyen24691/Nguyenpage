@@ -30,7 +30,27 @@ export async function GET() {
         nav_date: latest?.date ?? null,
         daily_change_percent: daily.percent,
         point_count: history.length,
+        data_status: history.length > 0 ? "ready" : "missing",
+        data_issue:
+          history.length > 0
+            ? null
+            : "Quỹ này chưa có nguồn NAV ổn định trong dataset hiện tại hoặc nguồn crawl chưa lấy được dữ liệu.",
+        priority: catalog?.priority ?? 999,
       };
+    });
+
+    results.sort((left, right) => {
+      const availabilityScore =
+        Number(right.point_count > 0) - Number(left.point_count > 0);
+      if (availabilityScore !== 0) {
+        return availabilityScore;
+      }
+
+      if (left.priority !== right.priority) {
+        return left.priority - right.priority;
+      }
+
+      return left.code.localeCompare(right.code);
     });
 
     return NextResponse.json({

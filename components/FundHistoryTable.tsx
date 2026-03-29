@@ -6,7 +6,7 @@ export default function FundHistoryTable({ rows }: { rows: FundNavRecord[] }) {
   if (!rows.length) {
     return (
       <div className="rounded-[1.5rem] border border-dashed border-outline-variant/80 bg-white/70 p-6 text-sm text-on-surface-variant">
-        Chua co bang lich su NAV du dai de hien thi.
+        Chưa có bảng lịch sử NAV đủ dài để hiển thị.
       </div>
     );
   }
@@ -16,9 +16,9 @@ export default function FundHistoryTable({ rows }: { rows: FundNavRecord[] }) {
       <div className="overflow-x-auto">
         <div className="min-w-[520px]">
           <div className="grid grid-cols-[1.2fr_1fr_0.8fr] gap-3 border-b border-outline-variant/40 px-4 py-4 text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant md:px-5">
-            <span>Ngay</span>
+            <span>Ngày</span>
             <span>NAV</span>
-            <span>Nguon</span>
+            <span>Nguồn</span>
           </div>
           <div className="max-h-[320px] overflow-y-auto">
             {rows.map((row) => (

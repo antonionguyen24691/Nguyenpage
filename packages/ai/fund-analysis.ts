@@ -30,11 +30,41 @@ function formatPercent(value: number | null) {
   return value === null ? "N/A" : `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
+function buildFallbackInsight({
+  fundCode,
+  topHoldings,
+  peerLines,
+  metrics,
+}: {
+  fundCode: string;
+  topHoldings: AnalyzeHolding[];
+  peerLines: string;
+  metrics: AnalyzeMetrics;
+}) {
+  const holdingsText = topHoldings.length
+    ? topHoldings.map((holding) => `${holding.stock_code} ${holding.weight.toFixed(2)}%`).join(", ")
+    : "Chưa có dữ liệu danh mục gần nhất.";
+
+  return [
+    `**Xu hướng**\nBiến động ngắn hạn của ${fundCode} hiện là ${formatPercent(metrics.daily.percent)} theo ngày, ${formatPercent(metrics.monthly.percent)} theo 1 tháng và ${formatPercent(metrics.quarterly.percent)} theo 1 quý.`,
+    `**Dữ liệu NAV**\nNAV gần nhất là ${metrics.latestNav?.toLocaleString("vi-VN") ?? "N/A"} tại ${metrics.latestDate ?? "N/A"}. Biên độ dữ liệu hiện có trải từ ${metrics.low?.toLocaleString("vi-VN") ?? "N/A"} đến ${metrics.high?.toLocaleString("vi-VN") ?? "N/A"} với ${metrics.pointCount} điểm NAV.`,
+    `**Danh mục**\n${holdingsText}`,
+    `**Đối chiếu**\n${peerLines || "Chưa có đủ dữ liệu để đối chiếu với nhóm quỹ tương đồng."}`,
+    `**Theo dõi tiếp**\nƯu tiên theo dõi độ đầy chuỗi NAV, các kỳ holdings T-1/T-2/T-3 và mức ổn định của nguồn dữ liệu trước khi kết luận sâu hơn.`,
+  ].join("\n\n");
+}
+
 export async function analyzeFund(params: AnalyzeParams) {
   const { fundCode, navHistory, topHoldings, peerComparison = {}, metrics } = params;
 
   if (!navHistory || navHistory.length < 2) {
-    return "Chưa có đủ dữ liệu lịch sử để phân tích xu hướng quỹ này.";
+    return [
+      "**Xu hướng**",
+      "Chưa có đủ dữ liệu lịch sử để phân tích xu hướng quỹ này.",
+      "",
+      "**Theo dõi tiếp**",
+      "Cần bổ sung thêm điểm NAV hoặc kết nối lại nguồn crawl cho quỹ đang chọn.",
+    ].join("\n");
   }
 
   const peerLines = Object.entries(peerComparison)
@@ -46,19 +76,12 @@ export async function analyzeFund(params: AnalyzeParams) {
     .filter(Boolean)
     .join(", ");
 
-  const holdingsText = topHoldings.length
-    ? topHoldings.map((holding) => `${holding.stock_code} ${holding.weight.toFixed(2)}%`).join(", ")
-    : "Chưa có dữ liệu danh mục gần nhất";
-
-  const fallback = [
-    `Xu hướng ngắn hạn của ${fundCode}: ${formatPercent(metrics.daily.percent)} theo ngày, ${formatPercent(metrics.monthly.percent)} theo 1 tháng và ${formatPercent(metrics.quarterly.percent)} theo 1 quý.`,
-    `NAV gần nhất: ${metrics.latestNav?.toLocaleString("vi-VN") ?? "N/A"} tại ${metrics.latestDate ?? "N/A"}.`,
-    `Biên độ lịch sử: thấp nhất ${metrics.low?.toLocaleString("vi-VN") ?? "N/A"}, cao nhất ${metrics.high?.toLocaleString("vi-VN") ?? "N/A"}.`,
-    topHoldings.length
-      ? `Danh mục đang nghiêng về: ${holdingsText}.`
-      : "Chưa có dữ liệu holdings đủ sâu để kết luận về cấu trúc danh mục.",
-    peerLines ? `Đối chiếu peer group: ${peerLines}.` : "Chưa có peer group để đối chiếu.",
-  ].join("\n");
+  const fallback = buildFallbackInsight({
+    fundCode,
+    topHoldings,
+    peerLines,
+    metrics,
+  });
 
   if (!process.env.OPENAI_API_KEY) {
     return fallback;
@@ -66,14 +89,24 @@ export async function analyzeFund(params: AnalyzeParams) {
 
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const holdingsText = topHoldings.length
+      ? topHoldings.map((holding) => `${holding.stock_code} ${holding.weight.toFixed(2)}%`).join(", ")
+      : "Chưa có dữ liệu danh mục gần nhất.";
+
     const prompt = `Bạn là chuyên gia phân tích quỹ mở tại Việt Nam.
 
-Hãy viết phần nhận định ngắn gọn, sắc nét, bằng tiếng Việt cho quỹ ${fundCode}.
-Yêu cầu:
-- Trả lời theo 4 đoạn ngắn có tiêu đề in đậm: **Xu hướng**, **Danh mục**, **Đối chiếu**, **Theo dõi tiếp**.
-- Không tâng bốc, không hô hào mua bán quá mức.
-- Nếu dữ liệu holdings còn mỏng thì nói rõ hạn chế.
-- Tập trung vào ý nghĩa vận hành cho dashboard, không viết kiểu marketing.
+Hãy viết phần nhận định dashboard cho quỹ ${fundCode} bằng tiếng Việt chuẩn, có dấu đầy đủ.
+
+Yêu cầu bắt buộc:
+- Chia đúng 5 phần, mỗi phần bắt đầu bằng tiêu đề markdown đậm:
+  **Xu hướng**
+  **Dữ liệu NAV**
+  **Danh mục**
+  **Đối chiếu**
+  **Theo dõi tiếp**
+- Mỗi phần chỉ 1-2 câu ngắn, rõ ràng, không viết dồn thành một đoạn dài.
+- Không dùng giọng marketing.
+- Nếu holdings hoặc peer comparison còn thiếu thì nói rõ giới hạn dữ liệu.
 
 Dữ liệu:
 - NAV gần nhất: ${metrics.latestNav ?? "N/A"} tại ${metrics.latestDate ?? "N/A"}
@@ -91,7 +124,7 @@ Dữ liệu:
       messages: [{ role: "user", content: prompt }],
       model: "gpt-4o-mini",
       max_tokens: 420,
-      temperature: 0.35,
+      temperature: 0.25,
     });
 
     return completion.choices[0]?.message?.content?.trim() || fallback;

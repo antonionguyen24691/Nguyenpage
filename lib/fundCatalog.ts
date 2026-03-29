@@ -154,7 +154,7 @@ export const fundCatalog: FundCatalogEntry[] = [
   },
   {
     code: "DCBC",
-    name: "Quỹ DCBC",
+    name: "Quỹ Cổ phiếu DCBC",
     company: "Dragon Capital",
     category: "equity",
     slug: "dcbc",

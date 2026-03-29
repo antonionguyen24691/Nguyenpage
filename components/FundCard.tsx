@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 
 type FundCardProps = {
@@ -9,6 +11,7 @@ type FundCardProps = {
   navDate: string | null;
   changePercent?: number | null;
   pointCount?: number;
+  dataIssue?: string | null;
   onClick?: () => void;
   isActive?: boolean;
 };
@@ -33,9 +36,12 @@ export default function FundCard({
   navDate,
   changePercent,
   pointCount,
+  dataIssue,
   onClick,
   isActive,
 }: FundCardProps) {
+  const hasData = Boolean(pointCount && pointCount > 0 && nav !== null && navDate);
+
   return (
     <button
       type="button"
@@ -47,7 +53,7 @@ export default function FundCard({
       }`}
     >
       <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-on-surface px-2.5 py-1 text-[11px] font-bold tracking-[0.18em] text-white">
               {fundCode}
@@ -55,10 +61,15 @@ export default function FundCard({
             <span className="rounded-full border border-outline-variant/80 px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
               {formatCategory(category)}
             </span>
+            {!hasData ? (
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                Thiếu dữ liệu
+              </span>
+            ) : null}
           </div>
           <h3 className="font-headline text-lg font-extrabold text-on-surface">{fundName}</h3>
           <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-on-surface-variant">
-            {company ?? "Fund Intelligence"}
+            {company ?? "Dữ liệu quỹ"}
           </p>
         </div>
         <div
@@ -70,7 +81,7 @@ export default function FundCard({
                 : "bg-[rgba(199,58,58,0.12)] text-[var(--color-error)]"
           }`}
         >
-          <div>Ngày</div>
+          <div>Biến động ngày</div>
           <div className="text-sm">
             {changePercent === null || changePercent === undefined
               ? "N/A"
@@ -86,10 +97,19 @@ export default function FundCard({
             {nav !== null ? nav.toLocaleString("vi-VN") : "N/A"}
           </div>
         </div>
-        <div className="flex items-center justify-between text-sm text-on-surface-variant">
-          <span>{navDate ? `Cập nhật ${new Date(navDate).toLocaleDateString("vi-VN")}` : "Chưa có cập nhật"}</span>
+        <div className="flex items-center justify-between gap-3 text-sm text-on-surface-variant">
+          <span>
+            {navDate
+              ? `Cập nhật ${new Date(navDate).toLocaleDateString("vi-VN")}`
+              : "Chưa có ngày cập nhật"}
+          </span>
           <span>{pointCount ? `${pointCount} điểm NAV` : "0 điểm NAV"}</span>
         </div>
+        {!hasData ? (
+          <div className="rounded-[1rem] border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-6 text-amber-900">
+            {dataIssue ?? "Quỹ này chưa có nguồn dữ liệu để hiển thị biểu đồ và thống kê."}
+          </div>
+        ) : null}
       </div>
     </button>
   );
