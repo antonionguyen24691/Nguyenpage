@@ -20,6 +20,10 @@ async function writeLocalConfig(config: ConfigRecord) {
   await fs.writeFile(localConfigPath, JSON.stringify(config, null, 2), "utf8");
 }
 
+function canWriteLocalConfig() {
+  return process.env.NODE_ENV !== "production" || process.env.VERCEL !== "1";
+}
+
 export async function getConfigValue<T>(key: string, fallback: T): Promise<T> {
   try {
     const { data, error } = await db
@@ -67,6 +71,8 @@ export async function getAllConfigValues(): Promise<ConfigRecord> {
 
 export async function saveConfigValue(key: string, value: unknown) {
   let databaseError: string | null = null;
+  let persistedToLocalFile = false;
+  let localFileError: string | null = null;
 
   try {
     const { error } = await db
@@ -83,14 +89,28 @@ export async function saveConfigValue(key: string, value: unknown) {
     databaseError = error instanceof Error ? error.message : "Unknown database error";
   }
 
-  const localConfig = await readLocalConfig();
-  localConfig[key] = value;
-  await writeLocalConfig(localConfig);
+  if (canWriteLocalConfig()) {
+    try {
+      const localConfig = await readLocalConfig();
+      localConfig[key] = value;
+      await writeLocalConfig(localConfig);
+      persistedToLocalFile = true;
+    } catch (error) {
+      localFileError = error instanceof Error ? error.message : "Unknown local file error";
+    }
+  } else {
+    localFileError = "Local file persistence is unavailable on Vercel production";
+  }
+
+  if (databaseError !== null && !persistedToLocalFile) {
+    throw new Error(databaseError);
+  }
 
   return {
     persistedToDatabase: databaseError === null,
-    persistedToLocalFile: true,
+    persistedToLocalFile,
     databaseError,
+    localFileError,
     localPath: localConfigPath,
   };
 }

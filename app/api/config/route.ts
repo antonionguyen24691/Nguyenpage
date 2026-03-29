@@ -30,9 +30,14 @@ export async function POST(request: Request) {
     const result = await saveConfigValue(key, value);
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
+      {
+        error: message,
+        hint:
+          "Production can only save through Supabase. Check SUPABASE_SERVICE_ROLE_KEY and RLS policies for site_config.",
+      },
+      { status: 503 },
     );
   }
 }
