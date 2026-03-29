@@ -115,7 +115,6 @@ export default function FundChart({
           color: "#f59e0b",
           lineWidth: 2,
           lineStyle: 2,
-          priceScaleId: "left",
         });
         benchmark.setData(
           benchmarkSeries.map((item) => ({
@@ -142,7 +141,6 @@ export default function FundChart({
           color: "#f59e0b",
           lineWidth: 2,
           lineStyle: 2,
-          priceScaleId: "left",
         });
         benchmark.setData(
           benchmarkSeries.map((item) => ({

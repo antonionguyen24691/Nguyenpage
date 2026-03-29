@@ -60,6 +60,7 @@ type NavPayload = {
   benchmark?: {
     code: string;
     label: string;
+    data: FundNavRecord[];
     metrics: {
       latestNav: number | null;
       latestDate: string | null;
@@ -230,7 +231,10 @@ export default function FundIntelligenceDashboard() {
   }, [selectedFund, selectedHoldingsDate]);
 
   const currentFund = funds.find((item) => item.code === selectedFund) ?? null;
-  const chartSeries = navPayload ? filterSeriesByRange(toChartSeries(navPayload.data), range) : [];
+  const chartSeries = useMemo(
+    () => (navPayload ? filterSeriesByRange(toChartSeries(navPayload.data), range) : []),
+    [navPayload, range],
+  );
   const candles = buildCandles(chartSeries, range === "1M" ? "week" : "month");
   const heikinAshi = buildHeikinAshi(candles);
   const comparisonSeries =
@@ -253,9 +257,44 @@ export default function FundIntelligenceDashboard() {
     () => parseInsightSections(navPayload?.ai_insight),
     [navPayload?.ai_insight],
   );
-  const benchmarkSeries = navPayload?.comparison?.VNINDEX
-    ? filterSeriesByRange(navPayload.comparison.VNINDEX, range)
-    : [];
+  const benchmarkData = useMemo(
+    () => navPayload?.benchmark?.data ?? [],
+    [navPayload],
+  );
+  const benchmarkSeries = useMemo(() => {
+    if (!benchmarkData.length || !chartSeries.length || chartMode === "compare") {
+      return [];
+    }
+
+    const rawBenchmarkSeries = filterSeriesByRange(toChartSeries(benchmarkData), range);
+
+    if (!rawBenchmarkSeries.length) {
+      return [];
+    }
+
+    const alignedFundSeries = chartSeries.filter((point) =>
+      rawBenchmarkSeries.some((benchmarkPoint) => benchmarkPoint.time === point.time),
+    );
+    const alignedBenchmarkSeries = rawBenchmarkSeries.filter((point) =>
+      alignedFundSeries.some((fundPoint) => fundPoint.time === point.time),
+    );
+
+    if (!alignedFundSeries.length || !alignedBenchmarkSeries.length) {
+      return [];
+    }
+
+    const fundBase = alignedFundSeries[0]?.value ?? 0;
+    const benchmarkBase = alignedBenchmarkSeries[0]?.value ?? 0;
+
+    if (!fundBase || !benchmarkBase) {
+      return [];
+    }
+
+    return alignedBenchmarkSeries.map((point) => ({
+      time: point.time,
+      value: (point.value / benchmarkBase) * fundBase,
+    }));
+  }, [benchmarkData, chartMode, chartSeries, range]);
   const fallbackFunds = useMemo(() => {
     if (!currentFund) {
       return [];

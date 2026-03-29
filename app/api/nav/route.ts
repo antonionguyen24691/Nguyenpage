@@ -95,6 +95,7 @@ export async function GET(request: Request) {
         code: "VNINDEX",
         label: "VN-Index",
         metrics: benchmarkMetrics,
+        data: benchmarkNavData,
       },
       ai_insight: analysis,
     });
