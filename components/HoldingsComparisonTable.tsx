@@ -47,15 +47,90 @@ function getAssetTypeLabel(value: HoldingsComparisonRow["asset_type"]) {
 export default function HoldingsComparisonTable({ dates, rows }: Props) {
   if (!dates.length || !rows.length) {
     return (
-        <div className="rounded-[1.5rem] border border-dashed border-outline-variant/80 bg-white/70 p-6 text-sm text-on-surface-variant">
+      <div className="rounded-[1.5rem] border border-dashed border-outline-variant/80 bg-white/70 p-6 text-sm text-on-surface-variant">
         Chưa có dữ liệu để so sánh T, T-1, T-2, T-3.
-        </div>
+      </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/80">
-      <div className="overflow-x-auto">
+    <div className="w-full max-w-full overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/80">
+      <div className="space-y-3 p-3 md:hidden">
+        {rows.slice(0, 12).map((row) => (
+          <div
+            key={row.stock_code}
+            className="rounded-[1.1rem] border border-outline-variant/30 bg-surface-container-low px-4 py-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-semibold text-on-surface">{row.stock_code}</div>
+                <div className="mt-2">
+                  <span className="rounded-full border border-outline-variant/70 px-2 py-0.5 text-[11px] font-semibold text-on-surface-variant">
+                    {getAssetTypeLabel(row.asset_type)}
+                  </span>
+                </div>
+              </div>
+              <div
+                className={
+                  row.changeVsPrevious === null
+                    ? "text-sm font-semibold text-on-surface-variant"
+                    : row.changeVsPrevious >= 0
+                      ? "text-sm font-semibold text-primary"
+                      : "text-sm font-semibold text-[var(--color-error)]"
+                }
+              >
+                {row.changeVsPrevious === null
+                  ? "--"
+                  : `${row.changeVsPrevious >= 0 ? "+" : ""}${row.changeVsPrevious.toFixed(2)}%`}
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {dates.map((date, index) => (
+                <div key={`${row.stock_code}-${date}`} className="rounded-2xl bg-white px-3 py-2">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+                    {index === 0 ? "T" : `T-${index}`}
+                  </div>
+                  <div className="mt-1 font-semibold text-on-surface">{formatWeight(row.weights[index])}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+              <div className="rounded-2xl bg-white px-3 py-2">
+                <div className="text-xs text-on-surface-variant">Giá hiện tại</div>
+                <div className="mt-1 font-semibold text-on-surface">
+                  {formatPrice(row.currentPrice, row.asset_type)}
+                </div>
+              </div>
+              <div className="rounded-2xl bg-white px-3 py-2">
+                <div className="text-xs text-on-surface-variant">Giá 1 tháng</div>
+                <div className="mt-1 font-semibold text-on-surface">
+                  {formatPrice(row.monthAgoPrice, row.asset_type)}
+                </div>
+              </div>
+              <div className="rounded-2xl bg-white px-3 py-2">
+                <div className="text-xs text-on-surface-variant">+/- 1M</div>
+                <div
+                  className={`mt-1 font-semibold ${
+                    row.asset_type !== "equity"
+                      ? "text-on-surface-variant"
+                      : row.monthChangePercent === null
+                        ? "text-on-surface-variant"
+                        : row.monthChangePercent >= 0
+                          ? "text-primary"
+                          : "text-[var(--color-error)]"
+                  }`}
+                >
+                  {formatPercent(row.monthChangePercent, row.asset_type)}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         <div className="min-w-[720px]">
           <div
             className="grid gap-3 border-b border-outline-variant/40 px-4 py-4 text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant md:px-5"

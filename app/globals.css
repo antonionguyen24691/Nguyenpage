@@ -53,6 +53,9 @@
 
 html {
   scroll-behavior: smooth;
+  width: 100%;
+  max-width: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -64,6 +67,8 @@ body {
   color: var(--color-on-background);
   font-family: var(--font-body);
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 a,

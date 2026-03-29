@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Inter, Manrope, Plus_Jakarta_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
@@ -27,6 +27,12 @@ export const metadata: Metadata = {
   title: "Nguyen Page | Financial Systems & SaaS Studio",
   description:
     "He thong tai chinh va SaaS hien dai cho doanh nghiep can su on dinh, van hanh gon, va trai nghiem dep hon.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
