@@ -12,6 +12,8 @@ export type FundHoldingRecord = {
   date: string;
 };
 
+export type HoldingAssetType = "equity" | "bond" | "cash" | "deposit" | "fund" | "other";
+
 export type ChartPoint = {
   time: string;
   value: number;
@@ -27,6 +29,7 @@ export type CandlePoint = {
 
 export type HoldingsComparisonRow = {
   stock_code: string;
+  asset_type: HoldingAssetType;
   weights: Array<number | null>;
   changeVsPrevious: number | null;
   currentPrice: number | null;
@@ -246,16 +249,54 @@ export function getRecentDates(dates: string[], limit = 4) {
 }
 
 export function simplifyHoldingCode(stockCode: string) {
-  const normalized = stockCode.trim().toUpperCase();
-  const matched = normalized.match(/^[A-Z-]+/);
-  return matched?.[0] ?? normalized;
+  return stockCode
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/[,;|]+$/g, "")
+    .replace(/(?:\d+(?:[.,]\d+)?)%$/g, "")
+    .replace(/([A-Z0-9.-]+?)(?:-?\d+(?:[.,]\d+)?)%$/g, "$1");
+}
+
+export function classifyHoldingCode(stockCode: string): HoldingAssetType {
+  const code = simplifyHoldingCode(stockCode);
+
+  if (!code) {
+    return "other";
+  }
+
+  if (
+    /^(CASH|TIEN|TIENMAT|VND|USD|USDVND|CASHVND|TGNH|TG)$/i.test(code) ||
+    /(TIEN|CASH|USD|VND)/i.test(code)
+  ) {
+    return "cash";
+  }
+
+  if (/^(CD|CCTG|CERT|CCD|DEP|DEPOSIT)/i.test(code)) {
+    return "deposit";
+  }
+
+  if (/(ETF|CCQ|FUND|NAV)$/i.test(code)) {
+    return "fund";
+  }
+
+  if (/^[A-Z]{3,4}$/.test(code)) {
+    return "equity";
+  }
+
+  if (/^[A-Z]{2,6}\d{2,}[A-Z0-9-]*$/.test(code)) {
+    return "bond";
+  }
+
+  return "other";
 }
 
 export function aggregateHoldingRows(holdings: FundHoldingRecord[]) {
-  const merged = new Map<string, FundHoldingRecord>();
+  const merged = new Map<string, FundHoldingRecord & { asset_type: HoldingAssetType }>();
 
   for (const row of holdings) {
     const stockCode = simplifyHoldingCode(row.stock_code);
+    const assetType = classifyHoldingCode(stockCode);
     const date = normalizeDate(row.date);
     const key = `${row.fund_code.toUpperCase()}::${date}::${stockCode}`;
     const existing = merged.get(key);
@@ -268,6 +309,7 @@ export function aggregateHoldingRows(holdings: FundHoldingRecord[]) {
     merged.set(key, {
       fund_code: row.fund_code.toUpperCase(),
       stock_code: stockCode,
+      asset_type: assetType,
       weight: Number(row.weight),
       date,
     });
@@ -323,6 +365,7 @@ export function buildHoldingsComparison(
         current !== null && previous !== null ? current - previous : null;
       return {
         stock_code: code,
+        asset_type: classifyHoldingCode(code),
         weights,
         changeVsPrevious,
         currentPrice: null,

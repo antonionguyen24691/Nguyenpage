@@ -35,6 +35,7 @@ type Fund = {
 
 type Holding = {
   stock_code: string;
+  asset_type?: "equity" | "bond" | "cash" | "deposit" | "fund" | "other";
   weight: number;
   date: string;
   currentPrice?: number | null;
@@ -393,22 +394,22 @@ export default function FundIntelligenceDashboard() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-8 px-4 pb-14 pt-8 md:px-6 xl:px-8">
-      <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(243,247,255,0.82))] p-6 shadow-[0_24px_60px_rgba(16,32,51,0.08)] md:p-8">
+    <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-3 pb-12 pt-6 md:gap-8 md:px-6 md:pb-14 md:pt-8 xl:px-8">
+      <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(243,247,255,0.82))] p-5 shadow-[0_24px_60px_rgba(16,32,51,0.08)] md:p-8">
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-5">
             <span className="section-kicker">Trung tâm dữ liệu quỹ</span>
             <div>
-              <h1 className="section-title max-w-4xl">
+              <h1 className="max-w-4xl text-[2.2rem] font-extrabold leading-[0.94] tracking-[-0.04em] text-on-surface sm:text-[3rem] lg:text-[4.25rem]">
                 Theo dõi NAV, danh mục, đối chiếu nhóm quỹ và tín hiệu vận động trên cùng một màn hình.
               </h1>
-              <p className="section-copy mt-4 max-w-3xl">
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-on-surface-variant md:text-base">
                 Giao diện này tập trung vào chuỗi NAV lịch sử, biểu đồ nến, Heikin-Ashi, bảng NAV,
                 so sánh T/T-1/T-2/T-3 cho holdings và phần nhận định tách rõ từng lớp thông tin.
               </p>
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <MetricCard
               label="Quỹ đang theo dõi"
               value={String(filteredFunds.length)}
@@ -442,7 +443,7 @@ export default function FundIntelligenceDashboard() {
       </section>
 
       <section className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
               Gợi ý theo dõi
@@ -500,7 +501,7 @@ export default function FundIntelligenceDashboard() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="space-y-4">
+        <aside className="min-w-0 space-y-4">
           <div className="rounded-[1.75rem] border border-white/70 bg-white/75 p-4 shadow-[0_20px_46px_rgba(16,32,51,0.06)]">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-headline text-lg font-bold text-on-surface">Quỹ mở</h2>
@@ -579,7 +580,7 @@ export default function FundIntelligenceDashboard() {
           </div>
         </aside>
 
-        <section ref={detailSectionRef} className="space-y-6">
+        <section ref={detailSectionRef} className="min-w-0 space-y-6">
           {isCompact && !selectedFund ? (
             <div className="rounded-[2rem] border border-dashed border-outline-variant/70 bg-white/70 p-6 text-sm leading-7 text-on-surface-variant">
               Chọn một quỹ ở cột bên trái để xem biểu đồ, lịch sử NAV, nhận định và biến động danh mục.

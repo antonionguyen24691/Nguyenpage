@@ -69,7 +69,9 @@ export async function GET() {
       };
     });
 
-    results.sort((left, right) => {
+    const visibleResults = results.filter((fund) => fund.point_count > 0);
+
+    visibleResults.sort((left, right) => {
       const statusRank = { ready: 0, stale: 1, missing: 2 } as const;
       const rankDiff =
         statusRank[left.data_status as keyof typeof statusRank] -
@@ -97,7 +99,8 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: results,
+      data: visibleResults,
+      hiddenMissingCount: results.length - visibleResults.length,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

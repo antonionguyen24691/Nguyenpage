@@ -5,6 +5,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 type Holding = {
   stock_code: string;
+  asset_type?: "equity" | "bond" | "cash" | "deposit" | "fund" | "other";
   weight: number;
   currentPrice?: number | null;
   monthAgoPrice?: number | null;
@@ -37,6 +38,39 @@ function formatMonthChange(value: number | null | undefined) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
+function getAssetTypeLabel(value: Holding["asset_type"]) {
+  switch (value) {
+    case "bond":
+      return "Trái phiếu";
+    case "cash":
+      return "Tiền mặt";
+    case "deposit":
+      return "Tiền gửi";
+    case "fund":
+      return "Quỹ / CCQ";
+    case "other":
+      return "Tài sản khác";
+    default:
+      return "Cổ phiếu";
+  }
+}
+
+function formatAssetPrice(value: number | null | undefined, assetType: Holding["asset_type"]) {
+  if (assetType && assetType !== "equity") {
+    return "Không áp dụng";
+  }
+
+  return formatPrice(value);
+}
+
+function formatAssetChange(value: number | null | undefined, assetType: Holding["asset_type"]) {
+  if (assetType && assetType !== "equity") {
+    return "Không áp dụng";
+  }
+
+  return formatMonthChange(value);
+}
+
 export default function FundHoldingsPie({ data }: { data: Holding[] }) {
   if (!data || data.length === 0) {
     return (
@@ -55,6 +89,7 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
   if (othersWeight > 0) {
     topData.push({
       stock_code: "Khác",
+      asset_type: "other",
       weight: othersWeight,
       currentPrice: null,
       monthAgoPrice: null,
@@ -64,7 +99,7 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="relative mx-auto h-[280px] w-full max-w-[280px]">
+      <div className="relative mx-auto h-[260px] w-full max-w-[260px] sm:h-[280px] sm:max-w-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -73,8 +108,8 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
               nameKey="stock_code"
               cx="50%"
               cy="50%"
-              innerRadius={72}
-              outerRadius={112}
+              innerRadius={68}
+              outerRadius={104}
               paddingAngle={2}
               stroke="none"
             >
@@ -117,7 +152,12 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
                     style={{ backgroundColor: COLORS[index % COLORS.length] }}
                   />
                   <div className="min-w-0">
-                    <div className="font-semibold text-on-surface">{item.stock_code}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="font-semibold text-on-surface">{item.stock_code}</div>
+                      <span className="rounded-full border border-outline-variant/70 px-2 py-0.5 text-[11px] font-semibold text-on-surface-variant">
+                        {getAssetTypeLabel(item.asset_type)}
+                      </span>
+                    </div>
                     <div className="mt-1 text-xs text-on-surface-variant">Tỷ trọng hiện tại</div>
                   </div>
                 </div>
@@ -130,24 +170,30 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
                 <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                   <div className="rounded-2xl bg-white/75 px-3 py-2">
                     <div className="text-xs text-on-surface-variant">Giá hiện tại</div>
-                    <div className="mt-1 font-semibold text-on-surface">{formatPrice(item.currentPrice)}</div>
+                    <div className="mt-1 font-semibold text-on-surface">
+                      {formatAssetPrice(item.currentPrice, item.asset_type)}
+                    </div>
                   </div>
                   <div className="rounded-2xl bg-white/75 px-3 py-2">
                     <div className="text-xs text-on-surface-variant">Giá 1 tháng</div>
-                    <div className="mt-1 font-semibold text-on-surface">{formatPrice(item.monthAgoPrice)}</div>
+                    <div className="mt-1 font-semibold text-on-surface">
+                      {formatAssetPrice(item.monthAgoPrice, item.asset_type)}
+                    </div>
                   </div>
                   <div className="rounded-2xl bg-white/75 px-3 py-2">
                     <div className="text-xs text-on-surface-variant">Biến động 1 tháng</div>
                     <div
                       className={`mt-1 font-semibold ${
-                        item.monthChangePercent === null || item.monthChangePercent === undefined
-                          ? "text-on-surface"
-                          : item.monthChangePercent >= 0
-                            ? "text-primary"
-                            : "text-[var(--color-error)]"
+                        item.asset_type && item.asset_type !== "equity"
+                          ? "text-on-surface-variant"
+                          : item.monthChangePercent === null || item.monthChangePercent === undefined
+                            ? "text-on-surface"
+                            : item.monthChangePercent >= 0
+                              ? "text-primary"
+                              : "text-[var(--color-error)]"
                       }`}
                     >
-                      {formatMonthChange(item.monthChangePercent)}
+                      {formatAssetChange(item.monthChangePercent, item.asset_type)}
                     </div>
                   </div>
                 </div>

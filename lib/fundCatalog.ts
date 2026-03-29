@@ -63,6 +63,16 @@ export const fundCatalog: FundCatalogEntry[] = [
     priority: 5,
   },
   {
+    code: "VMEEF",
+    name: "Quỹ Cổ phiếu Kinh tế Hiện đại VinaCapital",
+    company: "VinaCapital",
+    category: "equity",
+    productId: 68,
+    slug: "vmeef",
+    benchmark: "VN-Index",
+    priority: 6,
+  },
+  {
     code: "VLBF",
     name: "Quỹ Trái phiếu VinaCapital VLBF",
     company: "VinaCapital",
@@ -70,7 +80,7 @@ export const fundCatalog: FundCatalogEntry[] = [
     productId: 53,
     slug: "vlbf",
     benchmark: "VN Bond",
-    priority: 6,
+    priority: 7,
   },
   {
     code: "SSISCA",
@@ -80,7 +90,7 @@ export const fundCatalog: FundCatalogEntry[] = [
     productId: 11,
     slug: "ssisca",
     benchmark: "VN-Index",
-    priority: 7,
+    priority: 8,
   },
   {
     code: "SSIBF",
@@ -90,7 +100,7 @@ export const fundCatalog: FundCatalogEntry[] = [
     productId: 8,
     slug: "ssibf",
     benchmark: "VN Bond",
-    priority: 8,
+    priority: 9,
   },
   {
     code: "VLGF",
@@ -100,7 +110,7 @@ export const fundCatalog: FundCatalogEntry[] = [
     productId: 49,
     slug: "vlgf",
     benchmark: "VN-Index",
-    priority: 9,
+    priority: 10,
   },
   {
     code: "SSI-EF",
@@ -110,7 +120,7 @@ export const fundCatalog: FundCatalogEntry[] = [
     productId: 90,
     slug: "ssi-ef",
     benchmark: "VN-Index",
-    priority: 10,
+    priority: 11,
   },
   {
     code: "DCDS",
@@ -120,7 +130,7 @@ export const fundCatalog: FundCatalogEntry[] = [
     productId: 28,
     slug: "dcds",
     benchmark: "VN-Index",
-    priority: 11,
+    priority: 12,
   },
   {
     code: "DCDE",
@@ -130,7 +140,7 @@ export const fundCatalog: FundCatalogEntry[] = [
     productId: 25,
     slug: "dcde",
     benchmark: "VN-Index",
-    priority: 12,
+    priority: 13,
   },
   {
     code: "DCBF",
@@ -140,7 +150,7 @@ export const fundCatalog: FundCatalogEntry[] = [
     productId: 27,
     slug: "dcbf",
     benchmark: "VN Bond",
-    priority: 13,
+    priority: 14,
   },
   {
     code: "DCIP",
@@ -150,7 +160,7 @@ export const fundCatalog: FundCatalogEntry[] = [
     productId: 67,
     slug: "dcip",
     benchmark: "VN Bond",
-    priority: 14,
+    priority: 15,
   },
   {
     code: "DCBC",
@@ -159,7 +169,7 @@ export const fundCatalog: FundCatalogEntry[] = [
     category: "equity",
     slug: "dcbc",
     benchmark: "VN-Index",
-    priority: 15,
+    priority: 16,
   },
 ];
 

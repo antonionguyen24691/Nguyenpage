@@ -49,8 +49,11 @@ export async function GET(request: Request) {
       .sort((left, right) => right.weight - left.weight);
     const comparison = buildHoldingsComparison(fundRows, dateToFetch, 4);
     const symbols = [...new Set([
-      ...data.slice(0, 20).map((row) => row.stock_code),
-      ...comparison.rows.slice(0, 20).map((row) => row.stock_code),
+      ...data.slice(0, 20).filter((row) => row.asset_type === "equity").map((row) => row.stock_code),
+      ...comparison.rows
+        .slice(0, 20)
+        .filter((row) => row.asset_type === "equity")
+        .map((row) => row.stock_code),
     ])];
     const priceSnapshots = await getStockPriceSnapshots(symbols);
     const enrichedData = data.map((row) => {

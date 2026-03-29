@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import * as XLSX from "xlsx";
 import { fundCatalog, getFundCatalogEntry, type FundCatalogEntry } from "@/lib/fundCatalog";
 
 type FundData = {
@@ -18,7 +19,13 @@ const SSIAM_PAGE_MAP: Record<string, string> = {
   "SSI-EF": "https://ssiam.com.vn/en/ssiam/fund-information-ssief",
 };
 const DRAGON_CODES = new Set(["DCDS", "DCDE", "DCBF", "DCIP"]);
-const VINA_PDF_DAYS = ["08", "10", "12", "14", "15", "18", "20", "25"];
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+const DEFAULT_HEADERS = {
+  "User-Agent": USER_AGENT,
+  "Accept-Language": "vi,en-US;q=0.9,en;q=0.8",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+};
 const PDF_WORKER_URL = pathToFileURL(
   path.join(process.cwd(), "node_modules", "pdf-parse", "dist", "pdf-parse", "web", "pdf.worker.min.mjs"),
 ).href;
@@ -59,63 +66,58 @@ function normalizeSlashDate(value: string) {
   return `${match[3]}-${match[2]}-${match[1]}`;
 }
 
-function padMonth(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-function shiftMonth(date: Date, offset: number) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1));
-}
-
-function toMonthLabel(date: Date) {
-  const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${labels[date.getUTCMonth()]}-${date.getUTCFullYear()}`;
-}
-
-function getRecentReportMonths(limit = 4) {
-  const now = new Date();
-  const start = shiftMonth(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)), -1);
-  return Array.from({ length: limit }, (_, index) => shiftMonth(start, -index));
-}
-
-function buildVinaFactsheetCandidates(fundCode: string, reportMonth: Date) {
-  const reportLabel = toMonthLabel(reportMonth);
-  const publicationMonths = [shiftMonth(reportMonth, 1), reportMonth, shiftMonth(reportMonth, 2)];
-  const candidates: string[] = [];
-
-  for (const publicationMonth of publicationMonths) {
-    const year = publicationMonth.getUTCFullYear();
-    const month = publicationMonth.getUTCMonth() + 1;
-    for (const day of VINA_PDF_DAYS) {
-      candidates.push(
-        `https://wm.vinacapital.com/wp-content/uploads/${year}/${padMonth(month)}/${year}${padMonth(month)}${day}-VINACAPITAL-${fundCode}_Monthly-Factsheet_${reportLabel}-EN.pdf`,
-      );
-      candidates.push(
-        `https://wm.vinacapital.com/wp-content/uploads/${year}/${padMonth(month)}/${year}${padMonth(month)}${day}-VINACAPITAL-${fundCode}_Monthly-Factsheet_${reportLabel}-VN.pdf`,
-      );
-    }
+function normalizeCompactDate(value: string) {
+  const match = value.match(/(20\d{2})(\d{2})(\d{2})/);
+  if (!match) {
+    return null;
   }
 
-  return [...new Set(candidates)];
+  return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
-async function resolveReachableUrl(urls: string[]) {
-  for (const url of urls) {
-    try {
-      const response = await fetch(url, {
-        method: "HEAD",
-        headers: { "User-Agent": "Mozilla/5.0" },
-        cache: "no-store",
-      });
-      if (response.ok) {
-        return url;
-      }
-    } catch {
-      // continue
-    }
+function normalizeLongMonthDate(value: string) {
+  const direct = Date.parse(value);
+  if (!Number.isNaN(direct)) {
+    return new Date(direct).toISOString().slice(0, 10);
   }
 
-  return null;
+  const monthMatch = value.match(
+    /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(20\d{2})/i,
+  );
+  if (!monthMatch) {
+    return null;
+  }
+
+  const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const monthIndex = months.indexOf(monthMatch[2].slice(0, 3).toLowerCase());
+  if (monthIndex < 0) {
+    return null;
+  }
+
+  return `${monthMatch[3]}-${String(monthIndex + 1).padStart(2, "0")}-${String(Number(monthMatch[1])).padStart(2, "0")}`;
+}
+
+function shiftUtcDays(input: Date, delta: number) {
+  const date = new Date(Date.UTC(input.getUTCFullYear(), input.getUTCMonth(), input.getUTCDate()));
+  date.setUTCDate(date.getUTCDate() + delta);
+  return date;
+}
+
+function formatCompactUtcDate(input: Date) {
+  return `${input.getUTCFullYear()}${String(input.getUTCMonth() + 1).padStart(2, "0")}${String(input.getUTCDate()).padStart(2, "0")}`;
+}
+
+function formatDotUtcDate(input: Date) {
+  return `${String(input.getUTCDate()).padStart(2, "0")}.${String(input.getUTCMonth() + 1).padStart(2, "0")}.${input.getUTCFullYear()}`;
+}
+
+function extractDragonMonthFromUrl(url: string) {
+  const dotStyle = url.match(/thang-(\d{1,2})[.-](20\d{2})/i);
+  if (!dotStyle) {
+    return null;
+  }
+
+  return `${dotStyle[2]}-${String(Number(dotStyle[1])).padStart(2, "0")}-01`;
 }
 
 async function extractPdfText(pdfUrl: string) {
@@ -135,9 +137,16 @@ async function extractPdfText(pdfUrl: string) {
   return pdfData.text;
 }
 
-function extractVinaOfficialNav(entry: FundCatalogEntry, text: string) {
+function extractVinaOfficialNav(entry: FundCatalogEntry, text: string, fallbackDate: string | null = null) {
   const asOfMatch = text.match(/As of\s+(\d{2})\/(\d{2})\/(\d{4})/i);
-  if (!asOfMatch) {
+  const viDateMatch = text.match(/Tại ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(20\d{2})/i);
+  const date =
+    (asOfMatch ? `${asOfMatch[3]}-${asOfMatch[2]}-${asOfMatch[1]}` : null) ??
+    (viDateMatch
+      ? `${viDateMatch[3]}-${String(Number(viDateMatch[2])).padStart(2, "0")}-${String(Number(viDateMatch[1])).padStart(2, "0")}`
+      : null) ??
+    fallbackDate;
+  if (!date) {
     return null;
   }
 
@@ -148,7 +157,6 @@ function extractVinaOfficialNav(entry: FundCatalogEntry, text: string) {
     .filter(Boolean);
   const numericLines = lines.filter((line) => /^[\d,]+\.\d$/.test(line));
   const nav = numericLines.length >= 2 ? parseLocalizedNav(numericLines[1]) : null;
-  const date = `${asOfMatch[3]}-${asOfMatch[2]}-${asOfMatch[1]}`;
 
   if (nav === null) {
     return null;
@@ -160,6 +168,290 @@ function extractVinaOfficialNav(entry: FundCatalogEntry, text: string) {
     date,
     source: `${entry.company} official`,
   } satisfies FundData;
+}
+
+function buildVinaFundPageUrl(entry: FundCatalogEntry) {
+  if (!entry.slug) {
+    return null;
+  }
+
+  return `https://wm.vinacapital.com/vi/investment-solutions/onshore-funds/${entry.slug}/`;
+}
+
+function parseVinaNavXlsx(entry: FundCatalogEntry, buffer: Buffer, fallbackDate: string | null) {
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!firstSheet) {
+    return null;
+  }
+
+  const rows = XLSX.utils.sheet_to_json<(string | number | null)[]>(firstSheet, {
+    header: 1,
+    blankrows: false,
+    defval: null,
+  });
+  const dateText = rows
+    .flat()
+    .find((cell): cell is string => typeof cell === "string" && /As at|Tại ngày/i.test(cell));
+  const parsedDate =
+    (dateText?.match(/As at\s+(.+)/i)?.[1]
+      ? normalizeLongMonthDate(dateText.match(/As at\s+(.+)/i)?.[1] ?? "")
+      : null) ??
+    (dateText?.match(/Tại ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(20\d{2})/i)
+      ? `${dateText.match(/Tại ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(20\d{2})/i)?.[3]}-${String(Number(dateText.match(/Tại ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(20\d{2})/i)?.[2] ?? 0)).padStart(2, "0")}-${String(Number(dateText.match(/Tại ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(20\d{2})/i)?.[1] ?? 0)).padStart(2, "0")}`
+      : null) ??
+    fallbackDate;
+
+  const unitNavRow = rows.find(
+    (row) =>
+      typeof row[1] === "string" &&
+      /per Fund Certificate|một chứng chỉ quỹ/i.test(row[1]),
+  );
+  const navCell = unitNavRow?.slice(3).find(
+    (cell) => typeof cell === "number" || (typeof cell === "string" && /[\d,.]/.test(cell)),
+  );
+  const nav =
+    typeof navCell === "number" ? navCell : typeof navCell === "string" ? parseLocalizedNav(navCell) : null;
+
+  if (!parsedDate || nav === null) {
+    return null;
+  }
+
+  return {
+    fund: entry.code,
+    nav,
+    date: parsedDate,
+    source: `${entry.company} official daily NAV`,
+  } satisfies FundData;
+}
+
+function parseVinaDailyNavLinks(entry: FundCatalogEntry, html: string) {
+  const $ = cheerio.load(html);
+  const links = new Map<string, string>();
+
+  $("a[href$='.xlsx']").each((_, element) => {
+    const href = $(element).attr("href");
+    const label = $(element).text().replace(/\s+/g, " ").trim();
+    if (!href || !new RegExp(`_${entry.code}_BC_Ngay`, "i").test(href)) {
+      return;
+    }
+
+    const date =
+      normalizeSlashDate(label.match(/NAV Ngày\s+(\d{2}\/\d{2}\/\d{4})/i)?.[1] ?? "") ??
+      normalizeCompactDate(href.match(/_Ky-so_(20\d{6})/i)?.[1] ?? "");
+    if (!date) {
+      return;
+    }
+
+    links.set(date, href);
+  });
+
+  return [...links.entries()]
+    .sort((left, right) => new Date(right[0]).getTime() - new Date(left[0]).getTime())
+    .map(([date, url]) => ({ date, url }));
+}
+
+function parseVinaFactsheetLinks(entry: FundCatalogEntry, html: string) {
+  const $ = cheerio.load(html);
+  const links = new Map<string, string>();
+
+  $("a[href$='.pdf']").each((_, element) => {
+    const href = $(element).attr("href");
+    if (!href || !new RegExp(`VINACAPITAL-${entry.code}_Monthly-Factsheet`, "i").test(href)) {
+      return;
+    }
+
+    const reportDate =
+      normalizeSlashDate($(element).text().match(/(\d{2}\/\d{2}\/\d{4})/)?.[1] ?? "") ??
+      normalizeCompactDate(href.match(/\/(20\d{6})-VINACAPITAL-/i)?.[1] ?? "");
+    if (!reportDate) {
+      return;
+    }
+
+    links.set(reportDate, href);
+  });
+
+  return [...links.entries()]
+    .sort((left, right) => new Date(right[0]).getTime() - new Date(left[0]).getTime())
+    .map(([date, url]) => ({ date, url }));
+}
+
+async function fetchVinaNav(entry: FundCatalogEntry): Promise<FundData[]> {
+  const pageUrl = buildVinaFundPageUrl(entry);
+  if (!pageUrl) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(pageUrl, {
+      headers: DEFAULT_HEADERS,
+      cache: "no-store",
+    });
+    const html = await response.text();
+    const rows: FundData[] = [];
+
+    for (const report of parseVinaDailyNavLinks(entry, html).slice(0, 40)) {
+      try {
+        const xlsxResponse = await fetch(report.url, {
+          headers: DEFAULT_HEADERS,
+          cache: "no-store",
+        });
+        if (!xlsxResponse.ok) {
+          continue;
+        }
+        const parsed = parseVinaNavXlsx(
+          entry,
+          Buffer.from(await xlsxResponse.arrayBuffer()),
+          report.date,
+        );
+        if (parsed) {
+          rows.push(parsed);
+        }
+      } catch (error) {
+        console.error(`Error parsing VinaCapital daily NAV for ${entry.code}:`, error);
+      }
+    }
+
+    for (const report of parseVinaFactsheetLinks(entry, html).slice(0, 6)) {
+      try {
+        const text = await extractPdfText(report.url);
+        const parsed = extractVinaOfficialNav(entry, text, report.date);
+        if (parsed) {
+          rows.push(parsed);
+        }
+      } catch (error) {
+        console.error(`Error parsing VinaCapital factsheet NAV for ${entry.code}:`, error);
+      }
+    }
+
+    const unique = new Map<string, FundData>();
+    for (const row of rows) {
+      unique.set(row.date, row);
+    }
+
+    return [...unique.values()].sort(
+      (left, right) => new Date(left.date).getTime() - new Date(right.date).getTime(),
+    );
+  } catch (error) {
+    console.error(`Error crawling VinaCapital official NAV for ${entry.code}:`, error);
+    return [];
+  }
+}
+
+function buildVinaStaticXlsxCandidates(entry: FundCatalogEntry, daysBack = 120) {
+  const seen = new Set<string>();
+  const candidates: Array<{ date: string; url: string }> = [];
+  const today = new Date();
+  const publishOffsets = [1, 0, 2, 3];
+
+  const pushCandidate = (navDate: Date, url: string) => {
+    if (seen.has(url)) {
+      return;
+    }
+
+    seen.add(url);
+    candidates.push({
+      date: navDate.toISOString().slice(0, 10),
+      url,
+    });
+  };
+
+  for (let days = 0; days < daysBack; days += 1) {
+    const navDate = shiftUtcDays(today, -days);
+    const navCompact = formatCompactUtcDate(navDate);
+    const navDot = formatDotUtcDate(navDate);
+
+    for (const offset of publishOffsets) {
+      const publishDate = shiftUtcDays(navDate, offset);
+      if (publishDate.getTime() > today.getTime()) {
+        continue;
+      }
+
+      const publishCompact = formatCompactUtcDate(publishDate);
+      const uploadBase = `https://wm.vinacapital.com/wp-content/uploads/${publishDate.getUTCFullYear()}/${String(publishDate.getUTCMonth() + 1).padStart(2, "0")}`;
+
+      if (entry.code === "VEOF") {
+        pushCandidate(navDate, `${uploadBase}/${publishCompact}_VEOF_BC_Ngay_Ky-so_${navCompact}.xlsx`);
+        pushCandidate(navDate, `${uploadBase}/${publishCompact}_VEOF_BC_Ngay_Ky-so_${navCompact}-1.xlsx`);
+        continue;
+      }
+
+      if (["VDEF", "VESAF", "VIBF", "VMEEF"].includes(entry.code)) {
+        pushCandidate(navDate, `${uploadBase}/${publishCompact}_${entry.code}_BC_Daily_${navCompact}.xlsx`);
+        pushCandidate(navDate, `${uploadBase}/${publishCompact}_${entry.code}_BC_Daily_${navCompact}-1.xlsx`);
+        continue;
+      }
+
+      if (entry.code === "VLBF") {
+        pushCandidate(navDate, `${uploadBase}/${publishCompact}-VLBF-NAV-NGAY-${navDot}.xlsx`);
+        pushCandidate(navDate, `${uploadBase}/${publishCompact}-VLBF-NAV-NGAY-${navDot}-1.xlsx`);
+        continue;
+      }
+
+      if (entry.code === "VFF") {
+        pushCandidate(navDate, `${uploadBase}/${publishCompact}_VFF_BC_Weekly_${navCompact}.xlsx`);
+        pushCandidate(navDate, `${uploadBase}/${publishCompact}_VFF_BC_Weekly_${navCompact}-1.xlsx`);
+        pushCandidate(navDate, `${uploadBase}/${publishCompact}_VFF_BC_Ky_Ky-so_${navCompact}.xlsx`);
+        pushCandidate(navDate, `${uploadBase}/${publishCompact}_VFF_BC_Ky_Ky-so_${navCompact}-1.xlsx`);
+      }
+    }
+  }
+
+  return candidates;
+}
+
+async function fetchVinaStaticNav(entry: FundCatalogEntry): Promise<FundData[]> {
+  try {
+    const rows: FundData[] = [];
+    let hits = 0;
+    let missesAfterFirstHit = 0;
+
+    for (const report of buildVinaStaticXlsxCandidates(entry)) {
+      try {
+        const xlsxResponse = await fetch(report.url, {
+          headers: DEFAULT_HEADERS,
+          cache: "no-store",
+        });
+        if (!xlsxResponse.ok) {
+          if (hits > 0) {
+            missesAfterFirstHit += 1;
+            if (missesAfterFirstHit >= 28) {
+              break;
+            }
+          }
+          continue;
+        }
+
+        missesAfterFirstHit = 0;
+        const parsed = parseVinaNavXlsx(
+          entry,
+          Buffer.from(await xlsxResponse.arrayBuffer()),
+          report.date,
+        );
+        if (parsed) {
+          rows.push(parsed);
+          hits += 1;
+          if (hits >= 90) {
+            break;
+          }
+        }
+      } catch (error) {
+        console.error(`Error parsing VinaCapital static NAV for ${entry.code}:`, error);
+      }
+    }
+
+    const unique = new Map<string, FundData>();
+    for (const row of rows) {
+      unique.set(row.date, row);
+    }
+
+    return [...unique.values()].sort(
+      (left, right) => new Date(left.date).getTime() - new Date(right.date).getTime(),
+    );
+  } catch (error) {
+    console.error(`Error crawling VinaCapital static NAV for ${entry.code}:`, error);
+    return [];
+  }
 }
 
 async function fetchSsiamNav(entry: FundCatalogEntry): Promise<FundData[]> {
@@ -252,7 +544,7 @@ async function fetchDragonNav(entry: FundCatalogEntry): Promise<FundData[]> {
 
   try {
     const sitemapResponse = await fetch("https://dautu.dragoncapital.com.vn/sitemap.xml", {
-      headers: { "User-Agent": "Mozilla/5.0" },
+      headers: DEFAULT_HEADERS,
       cache: "no-store",
     });
     const sitemap = await sitemapResponse.text();
@@ -263,12 +555,23 @@ async function fetchDragonNav(entry: FundCatalogEntry): Promise<FundData[]> {
           /bao-cao-hoat-dong-quy/i.test(url) &&
           new RegExp(entry.code, "i").test(url),
       )
+      .sort((left, right) => {
+        const leftDate =
+          normalizeCompactDate(left.match(/(20\d{6})/i)?.[1] ?? "") ??
+          extractDragonMonthFromUrl(left) ??
+          "1970-01-01";
+        const rightDate =
+          normalizeCompactDate(right.match(/(20\d{6})/i)?.[1] ?? "") ??
+          extractDragonMonthFromUrl(right) ??
+          "1970-01-01";
+        return new Date(rightDate).getTime() - new Date(leftDate).getTime();
+      })
       .slice(0, 4);
 
     const rows: FundData[] = [];
     for (const url of urls) {
       const response = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0" },
+        headers: DEFAULT_HEADERS,
         cache: "no-store",
       });
       const html = await response.text();
@@ -295,25 +598,8 @@ async function fetchOfficialNav(entry: FundCatalogEntry): Promise<FundData[]> {
   }
 
   if (entry.company === "VinaCapital") {
-    const rows: FundData[] = [];
-    for (const reportMonth of getRecentReportMonths()) {
-      const pdfUrl = await resolveReachableUrl(buildVinaFactsheetCandidates(entry.code, reportMonth));
-      if (!pdfUrl) {
-        continue;
-      }
-
-      try {
-        const text = await extractPdfText(pdfUrl);
-        const parsed = extractVinaOfficialNav(entry, text);
-        if (parsed) {
-          rows.push(parsed);
-        }
-      } catch (error) {
-        console.error(`Error crawling VinaCapital official NAV for ${entry.code}:`, error);
-      }
-    }
-
-    return rows;
+    const staticRows = await fetchVinaStaticNav(entry);
+    return staticRows.length > 0 ? staticRows : fetchVinaNav(entry);
   }
 
   return [];
@@ -395,17 +681,41 @@ async function fetchFmarketNav(entry: FundCatalogEntry): Promise<FundData[]> {
 
 export async function crawlVinaCapital(fundName: string): Promise<FundData[]> {
   const entry = getFundCatalogEntry(fundName);
-  return entry ? fetchFmarketNav(entry) : [];
+  if (!entry || entry.company !== "VinaCapital") {
+    return [];
+  }
+
+  const [fmarketRows, officialRows] = await Promise.all([
+    fetchFmarketNav(entry),
+    fetchOfficialNav(entry),
+  ]);
+  return [...fmarketRows, ...officialRows];
 }
 
 export async function crawlDragonCapital(fundName: string): Promise<FundData[]> {
   const entry = getFundCatalogEntry(fundName);
-  return entry ? fetchFmarketNav(entry) : [];
+  if (!entry || entry.company !== "Dragon Capital") {
+    return [];
+  }
+
+  const [fmarketRows, officialRows] = await Promise.all([
+    fetchFmarketNav(entry),
+    fetchOfficialNav(entry),
+  ]);
+  return [...fmarketRows, ...officialRows];
 }
 
 export async function crawlSSIAM(fundName: string): Promise<FundData[]> {
   const entry = getFundCatalogEntry(fundName);
-  return entry ? fetchFmarketNav(entry) : [];
+  if (!entry || entry.company !== "SSIAM") {
+    return [];
+  }
+
+  const [fmarketRows, officialRows] = await Promise.all([
+    fetchFmarketNav(entry),
+    fetchOfficialNav(entry),
+  ]);
+  return [...fmarketRows, ...officialRows];
 }
 
 export async function crawlAllFunds(): Promise<FundData[]> {
