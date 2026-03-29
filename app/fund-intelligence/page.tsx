@@ -23,11 +23,13 @@ type Fund = {
   category: string;
   nav: number | null;
   nav_date: string | null;
+  nav_source?: string | null;
+  nav_age_days?: number | null;
   daily_change_percent: number | null;
   monthly_change_percent?: number | null;
   quarterly_change_percent?: number | null;
   point_count: number;
-  data_status?: "ready" | "missing";
+  data_status?: "ready" | "stale" | "missing";
   data_issue?: string | null;
 };
 
@@ -228,7 +230,10 @@ export default function FundIntelligenceDashboard() {
       return;
     }
 
-    const preferredFund = filteredFunds.find((fund) => fund.point_count > 0) ?? filteredFunds[0];
+    const preferredFund =
+      filteredFunds.find((fund) => fund.data_status === "ready") ??
+      filteredFunds.find((fund) => fund.point_count > 0) ??
+      filteredFunds[0];
     setSelectedFund(preferredFund.code);
     setSelectedHoldingsDate(null);
   }, [filteredFunds, selectedFund]);
@@ -352,7 +357,7 @@ export default function FundIntelligenceDashboard() {
   const suggestedFunds = useMemo(
     () =>
       filteredFunds
-        .filter((fund) => fund.point_count > 60)
+        .filter((fund) => fund.point_count > 60 && fund.data_status === "ready")
         .sort((left, right) => {
           const quarterDiff =
             (right.quarterly_change_percent ?? -Infinity) - (left.quarterly_change_percent ?? -Infinity);
@@ -553,14 +558,17 @@ export default function FundIntelligenceDashboard() {
                     fundName={fund.name}
                     company={fund.company}
                     category={fund.category}
-                    nav={fund.nav}
-                    navDate={fund.nav_date}
-                    changePercent={fund.daily_change_percent}
-                    pointCount={fund.point_count}
-                    dataIssue={fund.data_issue}
-                    isActive={fund.code === selectedFund}
-                    onClick={() => handleSelectFund(fund.code)}
-                  />
+                  nav={fund.nav}
+                  navDate={fund.nav_date}
+                  navSource={fund.nav_source}
+                  navAgeDays={fund.nav_age_days}
+                  changePercent={fund.daily_change_percent}
+                  pointCount={fund.point_count}
+                  dataStatus={fund.data_status}
+                  dataIssue={fund.data_issue}
+                  isActive={fund.code === selectedFund}
+                  onClick={() => handleSelectFund(fund.code)}
+                />
                 ))
               ) : (
                 <div className="rounded-[1.4rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-4 py-5 text-sm leading-7 text-on-surface-variant">
@@ -578,6 +586,17 @@ export default function FundIntelligenceDashboard() {
             </div>
           ) : (
             <>
+              {currentFund?.data_status === "stale" ? (
+                <div className="rounded-[2rem] border border-amber-200 bg-amber-50 px-5 py-5 text-sm leading-7 text-amber-950">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-amber-800">
+                    Dữ liệu đang chậm cập nhật
+                  </div>
+                  <p className="mt-2">
+                    {currentFund.data_issue ??
+                      "Quỹ này vẫn có lịch sử NAV hợp lệ, nhưng mốc cập nhật gần nhất đang chậm hơn hiện tại."}
+                  </p>
+                </div>
+              ) : null}
               {currentFund?.point_count === 0 ? (
                 <div className="rounded-[2rem] border border-amber-200 bg-amber-50 px-5 py-5 text-sm leading-7 text-amber-950">
                   <div className="text-xs font-bold uppercase tracking-[0.16em] text-amber-800">

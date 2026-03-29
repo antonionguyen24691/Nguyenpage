@@ -9,6 +9,21 @@ import { getFundDataset } from "@/lib/fundDataStore";
 
 export const dynamic = "force-dynamic";
 
+const STALE_NAV_DAYS = 21;
+
+function getAgeInDays(date: string | null) {
+  if (!date) {
+    return null;
+  }
+
+  const timestamp = new Date(date).getTime();
+  if (Number.isNaN(timestamp)) {
+    return null;
+  }
+
+  return Math.floor((Date.now() - timestamp) / (24 * 60 * 60 * 1000));
+}
+
 export async function GET() {
   try {
     const dataset = await getFundDataset();
@@ -25,6 +40,8 @@ export async function GET() {
       );
       const metrics = calculateNavMetrics(history);
       const catalog = getFundCatalogEntry(fund.code);
+      const navAgeDays = getAgeInDays(latest?.date ?? null);
+      const isStale = navAgeDays !== null && navAgeDays > STALE_NAV_DAYS;
 
       return {
         ...fund,
@@ -33,27 +50,42 @@ export async function GET() {
         category: catalog?.category ?? "equity",
         nav: latest ? Number(latest.nav) : null,
         nav_date: latest?.date ?? null,
+        nav_source: latest?.source ?? null,
+        nav_age_days: navAgeDays,
         daily_change_percent: daily.percent,
         monthly_change_percent: metrics.monthly.percent,
         quarterly_change_percent: metrics.quarterly.percent,
         point_count: history.length,
-        data_status: history.length > 0 ? "ready" : "missing",
+        data_status: history.length === 0 ? "missing" : isStale ? "stale" : "ready",
         data_issue:
-          history.length > 0
-            ? null
-            : "Quỹ này chưa có nguồn NAV ổn định trong dataset hiện tại hoặc nguồn crawl chưa lấy được dữ liệu.",
+          history.length === 0
+            ? "Quỹ này chưa có nguồn NAV ổn định trong dataset hiện tại hoặc nguồn crawl chưa lấy được dữ liệu."
+            : isStale
+              ? `Dữ liệu NAV hiện mới tới ${latest?.date ?? "không rõ ngày"}${
+                  latest?.source ? ` từ ${latest.source}` : ""
+                }. Chuỗi lịch sử cũ vẫn hợp lệ, nhưng mốc cập nhật gần nhất đang chậm so với hiện tại.`
+              : null,
         priority: catalog?.priority ?? 999,
       };
     });
 
     results.sort((left, right) => {
-      const availabilityScore = Number(right.point_count > 0) - Number(left.point_count > 0);
-      if (availabilityScore !== 0) {
-        return availabilityScore;
+      const statusRank = { ready: 0, stale: 1, missing: 2 } as const;
+      const rankDiff =
+        statusRank[left.data_status as keyof typeof statusRank] -
+        statusRank[right.data_status as keyof typeof statusRank];
+      if (rankDiff !== 0) {
+        return rankDiff;
       }
 
-      if ((right.quarterly_change_percent ?? -Infinity) !== (left.quarterly_change_percent ?? -Infinity)) {
-        return (right.quarterly_change_percent ?? -Infinity) - (left.quarterly_change_percent ?? -Infinity);
+      if (
+        (right.quarterly_change_percent ?? -Infinity) !==
+        (left.quarterly_change_percent ?? -Infinity)
+      ) {
+        return (
+          (right.quarterly_change_percent ?? -Infinity) -
+          (left.quarterly_change_percent ?? -Infinity)
+        );
       }
 
       if (left.priority !== right.priority) {

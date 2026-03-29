@@ -9,8 +9,11 @@ type FundCardProps = {
   category?: string;
   nav: number | null;
   navDate: string | null;
+  navSource?: string | null;
+  navAgeDays?: number | null;
   changePercent?: number | null;
   pointCount?: number;
+  dataStatus?: "ready" | "stale" | "missing";
   dataIssue?: string | null;
   onClick?: () => void;
   isActive?: boolean;
@@ -21,7 +24,7 @@ function formatCategory(category?: string) {
     case "bond":
       return "Trái phiếu";
     case "balanced":
-      return "Cân bằng";
+      return "Tài sản phân bổ";
     default:
       return "Cổ phiếu";
   }
@@ -34,8 +37,11 @@ export default function FundCard({
   category,
   nav,
   navDate,
+  navSource,
+  navAgeDays,
   changePercent,
   pointCount,
+  dataStatus,
   dataIssue,
   onClick,
   isActive,
@@ -61,7 +67,11 @@ export default function FundCard({
             <span className="rounded-full border border-outline-variant/80 px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
               {formatCategory(category)}
             </span>
-            {!hasData ? (
+            {dataStatus === "stale" ? (
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                Chậm cập nhật
+              </span>
+            ) : !hasData ? (
               <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
                 Thiếu dữ liệu
               </span>
@@ -105,9 +115,23 @@ export default function FundCard({
           </span>
           <span>{pointCount ? `${pointCount} điểm NAV` : "0 điểm NAV"}</span>
         </div>
+
+        {hasData && (navSource || dataStatus === "stale") ? (
+          <div className="rounded-[1rem] border border-outline-variant/50 bg-surface-container-low px-3 py-2 text-xs leading-6 text-on-surface-variant">
+            {navSource ? <div>Nguồn gần nhất: {navSource}</div> : null}
+            {dataStatus === "stale" && navAgeDays !== null ? (
+              <div>Dữ liệu đang chậm khoảng {navAgeDays} ngày so với hiện tại.</div>
+            ) : null}
+          </div>
+        ) : null}
+
         {!hasData ? (
           <div className="rounded-[1rem] border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-6 text-amber-900">
             {dataIssue ?? "Quỹ này chưa có nguồn dữ liệu để hiển thị biểu đồ và thống kê."}
+          </div>
+        ) : dataStatus === "stale" && dataIssue ? (
+          <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-6 text-amber-900">
+            {dataIssue}
           </div>
         ) : null}
       </div>
