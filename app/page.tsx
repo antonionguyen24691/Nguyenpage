@@ -105,45 +105,6 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="px-6 py-16 md:px-8 md:py-24">
-        <div className="mx-auto max-w-7xl rounded-[2rem] border border-outline-variant/60 bg-white/76 p-5 shadow-[0_18px_36px_rgba(16,32,51,0.06)] backdrop-blur-xl md:p-6">
-          <div className="grid gap-6 md:grid-cols-4">
-            {config.bankingCards.map((card, index) => (
-              <Link
-                key={card.title}
-                href={card.url || "#"}
-                className={`rounded-[1.5rem] p-5 ${
-                  index === 0
-                    ? "bg-gradient-to-br from-primary to-secondary text-white"
-                    : "bg-surface-container-low hover:bg-white"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
-                      index === 0 ? "bg-white/18" : "bg-primary/10 text-primary"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[20px]">{card.icon}</span>
-                  </span>
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] opacity-75">
-                    0{index + 1}
-                  </span>
-                </div>
-                <h3 className="mt-5 font-headline text-xl font-bold">{card.title}</h3>
-                <p
-                  className={`mt-3 text-sm leading-7 ${
-                    index === 0 ? "text-white/82" : "text-on-surface-variant"
-                  }`}
-                >
-                  {card.desc}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="px-6 py-8 md:px-8 md:py-12">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
           <div className="space-y-5">
@@ -192,14 +153,14 @@ export default async function Home() {
           <div className="overflow-hidden rounded-[1.8rem] bg-surface-container-low">
             <img
               src={config.dynamicImage}
-              alt="Dashboard preview"
+              alt="Bản xem trước dashboard"
               className="h-full min-h-[320px] w-full object-cover"
             />
           </div>
           <div className="space-y-6">
             <div className="section-kicker">
               <span className="material-symbols-outlined text-base">dashboard_customize</span>
-              Digital clarity
+              Điều phối số
             </div>
             <h2 className="section-title text-[clamp(2rem,3.2vw,3.4rem)]">
               {config.dynamicTitle}{" "}
@@ -236,7 +197,7 @@ export default async function Home() {
             <div className="space-y-5">
               <div className="section-kicker border-white/15 bg-white/10 text-white">
                 <span className="material-symbols-outlined text-base">rocket_launch</span>
-                Launch support
+                Hỗ trợ khởi động
               </div>
               <h2 className="font-headline text-4xl font-extrabold leading-tight md:text-5xl">
                 {config.ctaTitle}
@@ -252,13 +213,6 @@ export default async function Home() {
                 >
                   {config.ctaButtonText}
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                </Link>
-                <Link
-                  href="/admin"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/18 px-5 py-3.5 text-sm font-semibold text-white hover:bg-white/10"
-                >
-                  Mở CMS Admin
-                  <span className="material-symbols-outlined text-[18px]">settings</span>
                 </Link>
               </div>
             </div>

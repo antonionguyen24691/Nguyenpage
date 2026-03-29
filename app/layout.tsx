@@ -26,7 +26,7 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Nguyen Page | Financial Systems & SaaS Studio",
   description:
-    "He thong tai chinh va SaaS hien dai cho doanh nghiep can su on dinh, van hanh gon, va trai nghiem dep hon.",
+    "Hệ thống tài chính và SaaS hiện đại cho doanh nghiệp cần sự ổn định, vận hành gọn và trải nghiệm tốt hơn.",
 };
 
 export const viewport: Viewport = {
@@ -54,7 +54,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className="min-h-full bg-background text-on-surface font-body selection:bg-primary/15"
+        className="min-h-full bg-background font-body text-on-surface selection:bg-primary/15"
       >
         <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
           <div className="absolute left-[-10%] top-[-12rem] h-[28rem] w-[28rem] rounded-full bg-primary/12 blur-[120px]" />
@@ -76,60 +76,59 @@ export default function RootLayout({
                 Nguyen Page
               </div>
               <p className="max-w-sm text-sm leading-7 text-on-surface-variant">
-                Nen tang tai chinh va SaaS duoc lam moi theo huong gon, sang, de van
-                hanh va de mo rong hon.
+                Nền tảng tài chính và SaaS được làm mới theo hướng gọn, sáng, dễ vận hành và dễ mở rộng hơn.
               </p>
             </div>
 
             <div className="space-y-3">
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-on-surface-variant">
-                He thong
+                Hệ thống
               </p>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/">
-                Trang chu
+                Trang chủ
               </Link>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/dang-ky">
-                Dang ky
+                Đăng ký
               </Link>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/fund-intelligence">
-                Fund Intelligence
+                Thông tin quỹ
               </Link>
             </div>
 
             <div className="space-y-3">
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-on-surface-variant">
-                Dieu huong nhanh
+                Điều hướng nhanh
               </p>
-              <Link className="block text-sm text-on-surface hover:text-primary" href="/admin">
-                CMS Admin
-              </Link>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/service/bank">
-                Tu van tai chinh
+                Tư vấn tài chính
               </Link>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/service/saas">
-                Giai phap SaaS
+                Giải pháp SaaS
+              </Link>
+              <Link className="block text-sm text-on-surface hover:text-primary" href="/fund-intelligence">
+                Phân tích quỹ
               </Link>
             </div>
 
             <div className="space-y-4 rounded-3xl border border-outline-variant/60 bg-gradient-to-br from-primary/10 via-white to-secondary/10 p-5">
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
-                Van hanh moi
+                Vận hành mới
               </p>
               <h3 className="font-headline text-xl font-bold text-on-surface">
-                Truy cap nhanh vao luong dang ky va dashboard.
+                Truy cập nhanh vào luồng đăng ký và khu vực tư vấn.
               </h3>
               <Link
                 href="/dang-ky"
                 className="inline-flex items-center gap-2 rounded-full bg-on-surface px-4 py-2 text-sm font-semibold text-white hover:bg-primary"
               >
-                Bat dau ngay
+                Bắt đầu ngay
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </Link>
             </div>
           </div>
 
           <div className="border-t border-outline-variant/40 px-6 py-4 text-center text-xs text-on-surface-variant md:px-8">
-            © 2026 Nguyen Page. Refined for smoother daily operations.
+            © 2026 Nguyen Page. Hệ thống được tinh chỉnh để vận hành mượt và rõ ràng hơn.
           </div>
         </footer>
         <Analytics />

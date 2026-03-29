@@ -13,10 +13,10 @@ interface NavLink {
 }
 
 const defaultLinks: NavLink[] = [
-  { id: 1, label: "Trang chu", url: "/", order: 1, visible: true },
-  { id: 2, label: "Dich vu", url: "/service/bank", order: 2, visible: true },
-  { id: 3, label: "Ho tro", url: "/dang-ky", order: 3, visible: true },
-  { id: 4, label: "Thong tin quy", url: "/fund-intelligence", order: 4, visible: true },
+  { id: 1, label: "Trang chủ", url: "/", order: 1, visible: true },
+  { id: 2, label: "Dịch vụ", url: "/service/bank", order: 2, visible: true },
+  { id: 3, label: "Hỗ trợ", url: "/dang-ky", order: 3, visible: true },
+  { id: 4, label: "Thông tin quỹ", url: "/fund-intelligence", order: 4, visible: true },
 ];
 
 export default function DynamicNav() {
@@ -89,13 +89,13 @@ export default function DynamicNav() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <div className="rounded-full border border-outline-variant/70 bg-surface-container px-3 py-2 text-xs font-semibold text-on-surface-variant">
-            Live workspace
+            Không gian trực tuyến
           </div>
           <Link
             href="/dang-ky"
             className="inline-flex items-center gap-2 rounded-full bg-on-surface px-4 py-2 text-sm font-semibold text-white hover:bg-primary"
           >
-            Tu van ngay
+            Tư vấn ngay
             <span className="material-symbols-outlined text-[18px]">north_east</span>
           </Link>
         </div>
@@ -104,7 +104,7 @@ export default function DynamicNav() {
           type="button"
           onClick={() => setOpen((value) => !value)}
           className="flex h-11 w-11 items-center justify-center rounded-2xl border border-outline-variant/70 bg-white text-on-surface lg:hidden"
-          aria-label="Toggle navigation"
+          aria-label="Bật tắt điều hướng"
         >
           <span className="material-symbols-outlined">{open ? "close" : "menu"}</span>
         </button>
@@ -135,7 +135,7 @@ export default function DynamicNav() {
             href="/dang-ky"
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-on-surface px-4 py-3 text-sm font-semibold text-white hover:bg-primary"
           >
-            Bat dau tu van
+            Bắt đầu tư vấn
             <span className="material-symbols-outlined text-[18px]">bolt</span>
           </Link>
         </div>
