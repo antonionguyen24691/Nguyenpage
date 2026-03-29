@@ -65061,12 +65061,6 @@
       "source": "Fmarket"
     },
     {
-      "fund_code": "DCBC",
-      "nav": 25007.165650613064,
-      "date": "2026-03-26",
-      "source": "DragonCapital"
-    },
-    {
       "fund_code": "SSISCA",
       "nav": 45177.03,
       "date": "2026-03-26",
@@ -65095,12 +65089,6 @@
       "nav": 35434.53,
       "date": "2026-03-26",
       "source": "Fmarket"
-    },
-    {
-      "fund_code": "DCDS",
-      "nav": 25454.764033484527,
-      "date": "2026-03-26",
-      "source": "DragonCapital"
     },
     {
       "fund_code": "DCBF",

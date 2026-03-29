@@ -38,13 +38,14 @@ export default function FundChart({
       return;
     }
 
+    const getChartHeight = () => chartContainerRef.current?.clientHeight || 420;
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: "#5c6b7c",
       },
       width: chartContainerRef.current.clientWidth,
-      height: 420,
+      height: getChartHeight(),
       grid: {
         vertLines: { color: "rgba(135,149,168,0.18)" },
         horzLines: { color: "rgba(135,149,168,0.18)" },
@@ -126,7 +127,10 @@ export default function FundChart({
 
     const handleResize = () => {
       if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+        chart.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+          height: getChartHeight(),
+        });
       }
     };
 
@@ -140,7 +144,7 @@ export default function FundChart({
   return (
     <div
       ref={chartContainerRef}
-      className="h-[420px] w-full overflow-hidden rounded-[1.5rem] border border-white/70 bg-[rgba(255,255,255,0.7)]"
+      className="h-[320px] w-full overflow-hidden rounded-[1.5rem] border border-white/70 bg-[rgba(255,255,255,0.7)] md:h-[420px]"
     />
   );
 }

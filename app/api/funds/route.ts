@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getFundCatalogEntry } from "@/lib/fundCatalog";
-import { calculateChange, sortNavAscending } from "@/lib/fundAnalytics";
+import { calculateChange, sanitizeNavHistory } from "@/lib/fundAnalytics";
 import { getFundDataset } from "@/lib/fundDataStore";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export async function GET() {
     const dataset = await getFundDataset();
 
     const results = dataset.funds.map((fund) => {
-      const history = sortNavAscending(
+      const history = sanitizeNavHistory(
         dataset.nav.filter((row) => row.fund_code === fund.code.toUpperCase()),
       );
       const latest = history.at(-1) ?? null;

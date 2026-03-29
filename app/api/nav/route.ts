@@ -3,7 +3,7 @@ import { getPeerFundCodes } from "@/lib/fundCatalog";
 import {
   buildComparisonSeries,
   calculateNavMetrics,
-  sortNavAscending,
+  sanitizeNavHistory,
 } from "@/lib/fundAnalytics";
 import { getFundDataset } from "@/lib/fundDataStore";
 import { analyzeFund } from "../../../packages/ai/fund-analysis";
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
 
     const normalizedFundCode = fundCode.toUpperCase();
     const dataset = await getFundDataset();
-    const fullHistory = sortNavAscending(
+    const fullHistory = sanitizeNavHistory(
       dataset.nav.filter((row) => row.fund_code === normalizedFundCode),
     );
     const navData = days > 0 ? fullHistory.slice(-days) : fullHistory;
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     const peers = Object.fromEntries(
       peerCodes.map((code) => [
         code,
-        dataset.nav.filter((row) => row.fund_code === code),
+        sanitizeNavHistory(dataset.nav.filter((row) => row.fund_code === code)),
       ]),
     );
     const comparison = buildComparisonSeries(navData, peers);

@@ -37,6 +37,7 @@ const RANGE_IN_DAYS: Record<string, number> = {
   "6M": 186,
   "1Y": 366,
 };
+const MAX_NAV_SOURCE_JUMP_PERCENT = 25;
 
 export function normalizeDate(value: string | Date) {
   const date = value instanceof Date ? value : new Date(value);
@@ -55,8 +56,49 @@ export function sortNavDescending(data: FundNavRecord[]) {
   );
 }
 
+export function sanitizeNavHistory(navHistory: FundNavRecord[]) {
+  const ordered = sortNavAscending(navHistory);
+  const sanitized: FundNavRecord[] = [];
+
+  for (const row of ordered) {
+    const currentNav = Number(row.nav);
+    const previous = sanitized.at(-1);
+
+    if (!Number.isFinite(currentNav) || currentNav <= 0) {
+      continue;
+    }
+
+    if (!previous) {
+      sanitized.push({ ...row, nav: currentNav });
+      continue;
+    }
+
+    const previousNav = Number(previous.nav);
+    const sourceChanged =
+      Boolean(previous.source) &&
+      Boolean(row.source) &&
+      previous.source !== row.source;
+    const jumpPercent = Math.abs(((currentNav - previousNav) / previousNav) * 100);
+    const prefersPreviousSource = String(previous.source ?? "").toLowerCase().includes("fmarket");
+    const rowIsFallbackSource = !String(row.source ?? "").toLowerCase().includes("fmarket");
+
+    if (
+      sourceChanged &&
+      prefersPreviousSource &&
+      rowIsFallbackSource &&
+      jumpPercent > MAX_NAV_SOURCE_JUMP_PERCENT
+    ) {
+      continue;
+    }
+
+    sanitized.push({ ...row, nav: currentNav });
+  }
+
+  return sanitized;
+}
+
 export function toChartSeries(data: FundNavRecord[]) {
-  return sortNavAscending(data).map((item) => ({
+  return sanitizeNavHistory(data).map((item) => ({
     time: normalizeDate(item.date),
     value: Number(item.nav),
   }));
@@ -93,7 +135,7 @@ function pickNearestPointFromEnd(data: FundNavRecord[], fallbackOffset: number) 
 }
 
 export function calculateNavMetrics(navHistory: FundNavRecord[]) {
-  const ordered = sortNavAscending(navHistory);
+  const ordered = sanitizeNavHistory(navHistory);
   const latest = ordered.at(-1) ?? null;
   const previous = ordered.length > 1 ? ordered.at(-2) ?? null : null;
   const monthOffset = ordered.length > 1 ? Math.min(21, ordered.length - 1) : 0;
@@ -198,13 +240,47 @@ export function getRecentDates(dates: string[], limit = 4) {
     .slice(0, limit);
 }
 
+export function simplifyHoldingCode(stockCode: string) {
+  const normalized = stockCode.trim().toUpperCase();
+  const matched = normalized.match(/^[A-Z-]+/);
+  return matched?.[0] ?? normalized;
+}
+
+export function aggregateHoldingRows(holdings: FundHoldingRecord[]) {
+  const merged = new Map<string, FundHoldingRecord>();
+
+  for (const row of holdings) {
+    const stockCode = simplifyHoldingCode(row.stock_code);
+    const date = normalizeDate(row.date);
+    const key = `${row.fund_code.toUpperCase()}::${date}::${stockCode}`;
+    const existing = merged.get(key);
+
+    if (existing) {
+      existing.weight += Number(row.weight);
+      continue;
+    }
+
+    merged.set(key, {
+      fund_code: row.fund_code.toUpperCase(),
+      stock_code: stockCode,
+      weight: Number(row.weight),
+      date,
+    });
+  }
+
+  return [...merged.values()].sort(
+    (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime(),
+  );
+}
+
 export function buildHoldingsComparison(
   holdings: FundHoldingRecord[],
   focusDate: string | null,
   maxPeriods = 4,
 ) {
+  const normalizedHoldings = aggregateHoldingRows(holdings);
   const allDates = getRecentDates(
-    Array.from(new Set(holdings.map((item) => normalizeDate(item.date)))),
+    Array.from(new Set(normalizedHoldings.map((item) => normalizeDate(item.date)))),
     Math.max(maxPeriods, 4),
   );
 
@@ -217,7 +293,7 @@ export function buildHoldingsComparison(
     bucketByDate.set(date, new Map());
   }
 
-  for (const row of holdings) {
+  for (const row of normalizedHoldings) {
     const normalized = normalizeDate(row.date);
     const bucket = bucketByDate.get(normalized);
     if (!bucket) {

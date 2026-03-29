@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildHoldingsComparison } from "@/lib/fundAnalytics";
+import { aggregateHoldingRows, buildHoldingsComparison } from "@/lib/fundAnalytics";
 import { getFundDataset } from "@/lib/fundDataStore";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +19,9 @@ export async function GET(request: Request) {
 
     const normalizedFundCode = fundCode.toUpperCase();
     const dataset = await getFundDataset();
-    const fundRows = dataset.holdings.filter(
+    const fundRows = aggregateHoldingRows(dataset.holdings.filter(
       (row) => row.fund_code === normalizedFundCode,
-    );
+    ));
     const availableDates = Array.from(new Set(fundRows.map((row) => row.date))).sort(
       (left, right) => new Date(right).getTime() - new Date(left).getTime(),
     );
