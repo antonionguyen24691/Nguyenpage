@@ -52,6 +52,10 @@ async function writeLocalFundDataset(dataset: FundDataset) {
   await fs.writeFile(localFundDataPath, JSON.stringify(dataset, null, 2), "utf8");
 }
 
+function canWriteLocalFundData() {
+  return process.env.NODE_ENV !== "production" || process.env.VERCEL !== "1";
+}
+
 function mergeDatasets(...datasets: FundDataset[]): FundDataset {
   const funds = new Map<string, StoredFund>();
   const nav = new Map<string, FundNavRecord>();
@@ -169,9 +173,9 @@ export async function persistFundData(input: {
     updatedAt: new Date().toISOString(),
   });
 
-  await writeLocalFundDataset(merged);
-
   let databaseError: string | null = null;
+  let persistedToLocalFile = false;
+  let localFileError: string | null = null;
 
   try {
     if (input.funds?.length) {
@@ -217,10 +221,26 @@ export async function persistFundData(input: {
     databaseError = error instanceof Error ? error.message : "Unknown database error";
   }
 
+  if (canWriteLocalFundData()) {
+    try {
+      await writeLocalFundDataset(merged);
+      persistedToLocalFile = true;
+    } catch (error) {
+      localFileError = error instanceof Error ? error.message : "Unknown local file error";
+    }
+  } else {
+    localFileError = "Local file persistence is unavailable on Vercel production";
+  }
+
+  if (databaseError !== null && !persistedToLocalFile) {
+    throw new Error(databaseError);
+  }
+
   return {
     persistedToDatabase: databaseError === null,
-    persistedToLocalFile: true,
+    persistedToLocalFile,
     databaseError,
+    localFileError,
     localPath: localFundDataPath,
     counts: {
       funds: input.funds?.length ?? 0,
