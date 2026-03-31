@@ -1,18 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Inter, Manrope, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Manrope } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import DynamicNav from "@/components/DynamicNav";
 import "./globals.css";
 
 const inter = Inter({
   variable: "--font-inter",
-  subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600"],
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-body",
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700"],
 });
@@ -43,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`light ${inter.variable} ${jakarta.variable} ${manrope.variable} h-full antialiased`}
+      className={`light ${inter.variable} ${manrope.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

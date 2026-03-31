@@ -58,12 +58,12 @@ function parseLocalizedNav(value: string) {
 }
 
 function normalizeSlashDate(value: string) {
-  const match = value.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  const match = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (!match) {
     return null;
   }
 
-  return `${match[3]}-${match[2]}-${match[1]}`;
+  return `${match[3]}-${String(Number(match[2])).padStart(2, "0")}-${String(Number(match[1])).padStart(2, "0")}`;
 }
 
 function normalizeCompactDate(value: string) {
@@ -637,10 +637,54 @@ async function resolveFmarketProductId(entry: FundCatalogEntry) {
   }
 }
 
+async function fetchFmarketSpotNav(entry: FundCatalogEntry): Promise<FundData[]> {
+  if (!entry.slug) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(`https://fmarket.vn/quy/${entry.slug}`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const html = await response.text();
+    const date = normalizeSlashDate(
+      html.match(/Cập nhật ngày\s+(\d{1,2}\/\d{1,2}\/\d{4})/i)?.[1] ?? "",
+    );
+    const nav = parseLocalizedNav(
+      html.match(/Giá gần nhất<\/span><!----><span[^>]*class="nav">([\d,.\s]+)\s*VND/i)?.[1] ?? "",
+    );
+
+    if (!date || nav === null) {
+      return [];
+    }
+
+    return [
+      {
+        fund: entry.code,
+        nav,
+        date,
+        source: `${entry.company} via Fmarket page`,
+      },
+    ];
+  } catch (error) {
+    console.error(`Error crawling Fmarket spot NAV for ${entry.code}:`, error);
+    return [];
+  }
+}
+
 async function fetchFmarketNav(entry: FundCatalogEntry): Promise<FundData[]> {
   const productId = await resolveFmarketProductId(entry);
+  const spotRowsPromise = fetchFmarketSpotNav(entry);
   if (!productId) {
-    return [];
+    return spotRowsPromise;
   }
 
   try {
@@ -665,7 +709,7 @@ async function fetchFmarketNav(entry: FundCatalogEntry): Promise<FundData[]> {
       return [];
     }
 
-    return payload.data
+    const historyRows = payload.data
       .map((item: { nav: number | string; navDate: string }) => ({
         fund: entry.code,
         nav: Number(item.nav),
@@ -673,9 +717,12 @@ async function fetchFmarketNav(entry: FundCatalogEntry): Promise<FundData[]> {
         source: `${entry.company} via Fmarket`,
       }))
       .filter((item: FundData) => Number.isFinite(item.nav) && item.nav > 0 && item.date);
+    const spotRows = await spotRowsPromise;
+
+    return [...historyRows, ...spotRows];
   } catch (error) {
     console.error(`Error crawling ${entry.code}:`, error);
-    return [];
+    return spotRowsPromise;
   }
 }
 
