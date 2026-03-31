@@ -97,10 +97,25 @@ export async function GET() {
       return left.code.localeCompare(right.code);
     });
 
+    const latestNavDate =
+      visibleResults
+        .map((fund) => fund.nav_date)
+        .filter((value): value is string => Boolean(value))
+        .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0] ?? null;
+    const latestNavAgeDays = getAgeInDays(latestNavDate);
+    const dataFreshness =
+      latestNavAgeDays === null ? "unknown" : latestNavAgeDays <= 3 ? "fresh" : "stale";
+
     return NextResponse.json({
       success: true,
       data: visibleResults,
       hiddenMissingCount: results.length - visibleResults.length,
+      meta: {
+        updatedAt: dataset.updatedAt,
+        latestNavDate,
+        latestNavAgeDays,
+        dataFreshness,
+      },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

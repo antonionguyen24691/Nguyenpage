@@ -34,6 +34,13 @@ type Fund = {
   data_issue?: string | null;
 };
 
+type FundsMeta = {
+  updatedAt: string | null;
+  latestNavDate: string | null;
+  latestNavAgeDays: number | null;
+  dataFreshness: "fresh" | "stale" | "unknown";
+};
+
 type Holding = {
   stock_code: string;
   asset_type?: "equity" | "bond" | "cash" | "deposit" | "fund" | "other";
@@ -145,6 +152,32 @@ function formatMonthLabel(value: string) {
   });
 }
 
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return "Chưa có dữ liệu";
+  }
+
+  return new Date(value).toLocaleString("vi-VN");
+}
+
+function getFreshnessLabel(meta: FundsMeta | null) {
+  if (!meta) {
+    return "Chưa xác định";
+  }
+
+  if (meta.dataFreshness === "fresh") {
+    return "Dữ liệu đang mới";
+  }
+
+  if (meta.dataFreshness === "stale") {
+    return meta.latestNavAgeDays !== null
+      ? `Dữ liệu chậm khoảng ${meta.latestNavAgeDays} ngày`
+      : "Dữ liệu đang chậm";
+  }
+
+  return "Chưa xác định";
+}
+
 function parseInsightSections(text: string | null | undefined): InsightSection[] {
   if (!text?.trim()) {
     return [];
@@ -186,6 +219,7 @@ function parseInsightSections(text: string | null | undefined): InsightSection[]
 export default function FundIntelligenceDashboard() {
   const detailSectionRef = useRef<HTMLElement | null>(null);
   const [funds, setFunds] = useState<Fund[]>([]);
+  const [fundsMeta, setFundsMeta] = useState<FundsMeta | null>(null);
   const [selectedFund, setSelectedFund] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
@@ -219,6 +253,7 @@ export default function FundIntelligenceDashboard() {
       .then((payload) => {
         if (payload.success) {
           setFunds(payload.data);
+          setFundsMeta(payload.meta ?? null);
         }
       })
       .finally(() => setLoading(false));
@@ -450,6 +485,27 @@ export default function FundIntelligenceDashboard() {
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2 rounded-[1.6rem] border border-outline-variant/50 bg-white/75 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+                    Cập nhật dữ liệu
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-on-surface">
+                    {getFreshnessLabel(fundsMeta)}
+                  </div>
+                </div>
+                <div className="grid gap-2 text-sm text-on-surface-variant md:text-right">
+                  <div>Lần đồng bộ ghi nhận: {formatDateTime(fundsMeta?.updatedAt ?? null)}</div>
+                  <div>
+                    NAV mới nhất toàn hệ:{" "}
+                    {fundsMeta?.latestNavDate
+                      ? new Date(fundsMeta.latestNavDate).toLocaleDateString("vi-VN")
+                      : "Chưa có dữ liệu"}
+                  </div>
+                </div>
+              </div>
+            </div>
             <MetricCard
               label="Quỹ đang theo dõi"
               value={String(filteredFunds.length)}
