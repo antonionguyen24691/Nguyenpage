@@ -7,7 +7,15 @@ function getBearerToken(request: Request) {
   return authHeader.slice("Bearer ".length).trim();
 }
 
+function isVercelCronRequest(request: Request) {
+  return Boolean(request.headers.get("x-vercel-cron"));
+}
+
 export function assertCronAuthorized(request: Request) {
+  if (isVercelCronRequest(request)) {
+    return null;
+  }
+
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {

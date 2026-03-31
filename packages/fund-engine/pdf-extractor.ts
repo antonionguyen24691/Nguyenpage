@@ -30,7 +30,7 @@ const SSIAM_PAGES: Record<string, string> = {
 };
 
 const DRAGON_CODES = new Set(["DCDS", "DCDE", "DCBF", "DCIP"]);
-const VINA_CODES = new Set(["VEOF", "VESAF", "VFF", "VIBF", "VDEF", "VLBF"]);
+const VINA_CODES = new Set(["VEOF", "VESAF", "VFF", "VIBF", "VDEF", "VLBF", "VMEEF"]);
 const MAX_HISTORICAL_PERIODS = 4;
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import FundCard from "@/components/FundCard";
 import FundChart from "@/components/FundChart";
+import FundDetailPanel from "@/components/FundDetailPanel";
 import FundHoldingsPie from "@/components/FundHoldingsPie";
 import FundHistoryTable from "@/components/FundHistoryTable";
 import HoldingsComparisonTable from "@/components/HoldingsComparisonTable";
@@ -85,6 +86,21 @@ type HoldingsPayload = {
   availableDates: string[];
   comparisonDates: string[];
   comparisonRows: HoldingsComparisonRow[];
+};
+
+type FundDetailsPayload = {
+  code: string;
+  name: string;
+  company: string;
+  category: string;
+  benchmark: string | null;
+  latestNavDate: string | null;
+  latestHoldingsDate: string | null;
+  summary: string;
+  overview: Array<{ label: string; value: string }>;
+  assetAllocation: Array<{ label: string; weight: number; share: number }>;
+  sectorAllocation: Array<{ label: string; weight: number; share: number }>;
+  documents: Array<{ title: string; category: string; url: string; date: string | null }>;
 };
 
 type InsightSection = {
@@ -181,6 +197,11 @@ export default function FundIntelligenceDashboard() {
   const [selectedStrategy, setSelectedStrategy] = useState<StrategyFilter>("all");
   const [navPayload, setNavPayload] = useState<NavPayload | null>(null);
   const [holdingsPayload, setHoldingsPayload] = useState<HoldingsPayload | null>(null);
+  const [detailsPayload, setDetailsPayload] = useState<FundDetailsPayload | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsTab, setDetailsTab] = useState<"overview" | "asset" | "sector" | "documents">(
+    "overview",
+  );
   const [selectedHoldingsDate, setSelectedHoldingsDate] = useState<string | null>(null);
 
   useEffect(() => {
@@ -276,6 +297,24 @@ export default function FundIntelligenceDashboard() {
       })
       .finally(() => setHoldingsLoading(false));
   }, [selectedFund, selectedHoldingsDate]);
+
+  useEffect(() => {
+    if (!selectedFund) {
+      setDetailsPayload(null);
+      return;
+    }
+
+    setDetailsLoading(true);
+    setDetailsPayload(null);
+    fetch(`/api/fund-details?fund=${selectedFund}`)
+      .then((response) => response.json())
+      .then((payload) => {
+        if (payload.success) {
+          setDetailsPayload(payload.data);
+        }
+      })
+      .finally(() => setDetailsLoading(false));
+  }, [selectedFund]);
 
   const currentFund = filteredFunds.find((item) => item.code === selectedFund) ?? null;
   const chartSeries = useMemo(
@@ -375,6 +414,7 @@ export default function FundIntelligenceDashboard() {
   function handleSelectFund(fundCode: string) {
     setSelectedFund(fundCode);
     setSelectedHoldingsDate(null);
+    setDetailsTab("overview");
 
     if (isCompact) {
       window.setTimeout(() => {
@@ -756,6 +796,22 @@ export default function FundIntelligenceDashboard() {
                     )}
                   </div>
                 </div>
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <FundDetailPanel
+                  summary={
+                    detailsPayload?.summary ??
+                    "Thông tin chi tiết quỹ sẽ được tổng hợp tự động từ NAV, holdings và cấu hình nguồn dữ liệu."
+                  }
+                  overview={detailsPayload?.overview ?? []}
+                  assetAllocation={detailsPayload?.assetAllocation ?? []}
+                  sectorAllocation={detailsPayload?.sectorAllocation ?? []}
+                  documents={detailsPayload?.documents ?? []}
+                  activeTab={detailsTab}
+                  onTabChange={setDetailsTab}
+                  loading={detailsLoading}
+                />
               </div>
 
               <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
