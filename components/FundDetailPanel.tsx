@@ -23,7 +23,6 @@ type DocumentItem = {
 type TabKey = "overview" | "asset" | "sector" | "documents";
 
 type FundDetailPanelProps = {
-  summary: string;
   overview: OverviewItem[];
   assetAllocation: AllocationItem[];
   sectorAllocation: AllocationItem[];
@@ -45,7 +44,6 @@ function formatPercent(value: number) {
 }
 
 export default function FundDetailPanel({
-  summary,
   overview,
   assetAllocation,
   sectorAllocation,
@@ -57,14 +55,13 @@ export default function FundDetailPanel({
   return (
     <div className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="max-w-3xl">
+        <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
             Hồ sơ quỹ
           </p>
           <h3 className="mt-2 font-headline text-xl font-extrabold text-on-surface">
-            Thông tin chi tiết, phân bổ và tài liệu tham chiếu
+            Thông tin chi tiết và tài liệu tham chiếu
           </h3>
-          <p className="mt-3 text-sm leading-7 text-on-surface-variant">{summary}</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -86,8 +83,8 @@ export default function FundDetailPanel({
       </div>
 
       {loading ? (
-        <div className="mt-6 flex min-h-[260px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-6 text-sm font-semibold text-on-surface-variant">
-          Đang tổng hợp dữ liệu chi tiết quỹ...
+        <div className="mt-6 flex min-h-[220px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-6 text-sm font-semibold text-on-surface-variant">
+          Đang tải dữ liệu quỹ...
         </div>
       ) : null}
 
@@ -111,14 +108,14 @@ export default function FundDetailPanel({
 
       {!loading && activeTab === "asset" ? (
         <AllocationList
-          emptyText="Chưa có dữ liệu để tổng hợp phân bổ tài sản."
+          emptyText="Chưa có dữ liệu phân bổ tài sản."
           items={assetAllocation}
         />
       ) : null}
 
       {!loading && activeTab === "sector" ? (
         <AllocationList
-          emptyText="Chưa có dữ liệu để tổng hợp phân bổ theo ngành."
+          emptyText="Chưa có dữ liệu phân bổ theo ngành."
           items={sectorAllocation}
         />
       ) : null}
@@ -138,19 +135,19 @@ export default function FundDetailPanel({
                   {document.category}
                 </div>
                 <div className="mt-2 text-lg font-extrabold text-on-surface">{document.title}</div>
-                <div className="mt-2 text-sm leading-6 text-on-surface-variant break-all">
+                <div className="mt-2 break-all text-sm leading-6 text-on-surface-variant">
                   {document.url}
                 </div>
                 <div className="mt-3 text-xs font-semibold text-on-surface-variant">
                   {document.date
                     ? `Mốc tham chiếu: ${new Date(document.date).toLocaleDateString("vi-VN")}`
-                    : "Link chính thức / trang nguồn"}
+                    : "Nguồn chính thức"}
                 </div>
               </a>
             ))
           ) : (
             <div className="rounded-[1.4rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-4 py-5 text-sm leading-7 text-on-surface-variant md:col-span-2">
-              Chưa có liên kết tài liệu cho quỹ này trong cấu hình hiện tại.
+              Chưa có liên kết tài liệu cho quỹ này.
             </div>
           )}
         </div>
@@ -175,46 +172,27 @@ function AllocationList({
   }
 
   return (
-    <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="space-y-3">
-        {items.map((item) => (
-          <div
-            key={item.label}
-            className="rounded-[1.4rem] border border-outline-variant/40 bg-surface-container-low p-4"
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="font-semibold text-on-surface">{item.label}</div>
-              <div className="text-sm font-bold text-on-surface">{formatPercent(item.share)}</div>
-            </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-outline-variant/20">
-              <div
-                className="h-full rounded-full bg-[linear-gradient(90deg,#0c7a69,#1f4db7)]"
-                style={{ width: `${Math.min(item.share, 100)}%` }}
-              />
-            </div>
-            <div className="mt-2 text-xs text-on-surface-variant">
-              Tỷ trọng gộp: {item.weight.toFixed(2)}%
-            </div>
+    <div className="mt-6 grid gap-4 md:grid-cols-2">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="rounded-[1.4rem] border border-outline-variant/40 bg-surface-container-low p-4"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="font-semibold text-on-surface">{item.label}</div>
+            <div className="text-sm font-bold text-on-surface">{formatPercent(item.share)}</div>
           </div>
-        ))}
-      </div>
-
-      <div className="rounded-[1.4rem] border border-outline-variant/40 bg-surface-container-low p-4">
-        <div className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-          Ghi chú
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-outline-variant/20">
+            <div
+              className="h-full rounded-full bg-[linear-gradient(90deg,#0c7a69,#1f4db7)]"
+              style={{ width: `${Math.min(item.share, 100)}%` }}
+            />
+          </div>
+          <div className="mt-2 text-xs text-on-surface-variant">
+            Tỷ trọng gộp: {item.weight.toFixed(2)}%
+          </div>
         </div>
-        <div className="mt-3 space-y-3 text-sm leading-7 text-on-surface-variant">
-          <p>
-            Tỷ trọng được tổng hợp từ kỳ danh mục gần nhất đang có trong dataset.
-          </p>
-          <p>
-            Phân bổ tài sản lấy theo loại nắm giữ. Phân bổ ngành lấy theo map ngành nội bộ cho cổ phiếu và fallback về nhóm tài sản nếu không phải cổ phiếu.
-          </p>
-          <p>
-            Khi cron NAV và holdings chạy lại, phần này sẽ tự cập nhật theo dữ liệu mới mà không cần sửa tay.
-          </p>
-        </div>
-      </div>
+      ))}
     </div>
   );
 }

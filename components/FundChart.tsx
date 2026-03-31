@@ -40,7 +40,7 @@ export default function FundChart({
       return;
     }
 
-    const getChartHeight = () => chartContainerRef.current?.clientHeight || 420;
+    const getChartHeight = () => chartContainerRef.current?.clientHeight || 340;
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
@@ -172,7 +172,7 @@ export default function FundChart({
   return (
     <div
       ref={chartContainerRef}
-      className="h-[320px] w-full overflow-hidden rounded-[1.5rem] border border-white/70 bg-[rgba(255,255,255,0.7)] md:h-[420px]"
+      className="h-[260px] w-full overflow-hidden rounded-[1.5rem] border border-white/70 bg-[rgba(255,255,255,0.7)] md:h-[340px] xl:h-[360px]"
     />
   );
 }
