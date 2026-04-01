@@ -20,6 +20,14 @@ const defaultLinks: NavLink[] = [
   { id: 5, label: "Thong tin quy", url: "/fund-intelligence", order: 5, visible: true },
 ];
 
+const advisorLink = defaultLinks.find((link) => link.url === "/advisor")!;
+
+function normalizeUrl(url: string) {
+  if (!url) return "/";
+  if (url === "/") return "/";
+  return url.replace(/\/+$/, "");
+}
+
 export default function DynamicNav() {
   const [links, setLinks] = useState<NavLink[]>(defaultLinks);
   const [open, setOpen] = useState(false);
@@ -34,11 +42,10 @@ export default function DynamicNav() {
         if (data.value && Array.isArray(data.value)) {
           const parsed = data.value as NavLink[];
           const merged = [...parsed];
+          const hasAdvisor = merged.some((link) => normalizeUrl(link.url) === "/advisor");
 
-          for (const defaultLink of defaultLinks) {
-            if (!merged.some((link) => link.url === defaultLink.url)) {
-              merged.push(defaultLink);
-            }
+          if (!hasAdvisor) {
+            merged.push(advisorLink);
           }
 
           setLinks(merged.filter((link) => link.visible).sort((a, b) => a.order - b.order));
