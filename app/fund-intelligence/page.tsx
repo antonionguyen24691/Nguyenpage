@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import FundCard from "@/components/FundCard";
@@ -116,6 +116,7 @@ type InsightSection = {
 };
 
 type StrategyFilter = "all" | "equity" | "bond" | "balanced";
+type SidebarDisplayMode = "list" | "card";
 
 const RANGE_OPTIONS = ["1M", "3M", "6M", "1Y", "ALL"] as const;
 const CHART_MODES = [
@@ -229,6 +230,7 @@ export default function FundIntelligenceDashboard() {
   const [chartMode, setChartMode] = useState<(typeof CHART_MODES)[number]["key"]>("area");
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedStrategy, setSelectedStrategy] = useState<StrategyFilter>("all");
+  const [sidebarDisplayMode, setSidebarDisplayMode] = useState<SidebarDisplayMode>("list");
   const [navPayload, setNavPayload] = useState<NavPayload | null>(null);
   const [holdingsPayload, setHoldingsPayload] = useState<HoldingsPayload | null>(null);
   const [detailsPayload, setDetailsPayload] = useState<FundDetailsPayload | null>(null);
@@ -445,6 +447,7 @@ export default function FundIntelligenceDashboard() {
         .slice(0, 3),
     [filteredFunds],
   );
+  const sidebarFunds = useMemo(() => filteredFunds, [filteredFunds]);
 
   function handleSelectFund(fundCode: string) {
     setSelectedFund(fundCode);
@@ -633,32 +636,66 @@ export default function FundIntelligenceDashboard() {
                 Đang hiển thị <span className="font-semibold text-on-surface">{filteredFunds.length}</span> quỹ trong bộ lọc hiện tại.
               </div>
             </div>
-            <div className="space-y-3">
-              {filteredFunds.length > 0 ? (
-                filteredFunds.map((fund) => (
-                  <FundCard
-                    key={fund.code}
-                    fundCode={fund.code}
-                    fundName={fund.name}
-                    company={fund.company}
-                    category={fund.category}
-                  nav={fund.nav}
-                  navDate={fund.nav_date}
-                  navSource={fund.nav_source}
-                  navAgeDays={fund.nav_age_days}
-                  changePercent={fund.daily_change_percent}
-                  pointCount={fund.point_count}
-                  dataStatus={fund.data_status}
-                  dataIssue={fund.data_issue}
-                  isActive={fund.code === selectedFund}
-                  onClick={() => handleSelectFund(fund.code)}
-                />
-                ))
-              ) : (
-                <div className="rounded-[1.4rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-4 py-5 text-sm leading-7 text-on-surface-variant">
-                  Không có quỹ nào khớp với bộ lọc này. Hãy đổi công ty hoặc nhóm chiến lược.
-                </div>
-              )}
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="rounded-full border border-outline-variant/60 bg-surface-container-low p-1">
+                <button
+                  type="button"
+                  onClick={() => setSidebarDisplayMode("list")}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${sidebarDisplayMode === "list" ? "bg-on-surface text-white" : "text-on-surface-variant"}`}
+                >
+                  {"Danh s\u00e1ch"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSidebarDisplayMode("card")}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${sidebarDisplayMode === "card" ? "bg-on-surface text-white" : "text-on-surface-variant"}`}
+                >
+                  {"Th\u1ebb"}
+                </button>
+              </div>
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-on-surface-variant">
+                {filteredFunds.length} {"qu\u1ef9"}
+              </div>
+            </div>
+            <div className="max-h-[1120px] overflow-y-auto pr-1">
+              <div className={sidebarDisplayMode === "list" ? "space-y-2" : "space-y-3"}>
+                {sidebarFunds.length > 0 ? (
+                  sidebarDisplayMode === "list" ? (
+                    sidebarFunds.map((fund) => (
+                      <CompactFundListItem
+                        key={fund.code}
+                        fund={fund}
+                        isActive={fund.code === selectedFund}
+                        onClick={() => handleSelectFund(fund.code)}
+                      />
+                    ))
+                  ) : (
+                    sidebarFunds.map((fund) => (
+                      <FundCard
+                        key={fund.code}
+                        fundCode={fund.code}
+                        fundName={fund.name}
+                        company={fund.company}
+                        category={fund.category}
+                        nav={fund.nav}
+                        navDate={fund.nav_date}
+                        navSource={fund.nav_source}
+                        navAgeDays={fund.nav_age_days}
+                        changePercent={fund.daily_change_percent}
+                        pointCount={fund.point_count}
+                        dataStatus={fund.data_status}
+                        dataIssue={fund.data_issue}
+                        isActive={fund.code === selectedFund}
+                        onClick={() => handleSelectFund(fund.code)}
+                      />
+                    ))
+                  )
+                ) : (
+                  <div className="rounded-[1.4rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-4 py-5 text-sm leading-7 text-on-surface-variant">
+                    {"Kh\u00f4ng c\u00f3 qu\u1ef9 n\u00e0o kh\u1edbp v\u1edbi b\u1ed9 l\u1ecdc n\u00e0y. H\u00e3y \u0111\u1ed5i c\u00f4ng ty ho\u1eb7c nh\u00f3m chi\u1ebfn l\u01b0\u1ee3c."}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </aside>
@@ -962,6 +999,57 @@ export default function FundIntelligenceDashboard() {
         </section>
       </div>
     </div>
+  );
+}
+
+function CompactFundListItem({
+  fund,
+  isActive,
+  onClick,
+}: {
+  fund: Fund;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full rounded-[1.3rem] border px-4 py-3 text-left transition ${
+        isActive
+          ? "border-primary/45 bg-[linear-gradient(180deg,rgba(12,122,105,0.1),rgba(31,77,183,0.05))]"
+          : "border-outline-variant/50 bg-surface-container-low hover:border-primary/30 hover:bg-white"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-extrabold text-on-surface">{fund.code}</span>
+            <span className="rounded-full border border-outline-variant/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+              {fund.company}
+            </span>
+          </div>
+          <div className="mt-1 line-clamp-2 text-sm font-semibold leading-6 text-on-surface">{fund.name}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-on-surface-variant">
+            <span>{fund.nav !== null ? fund.nav.toLocaleString("vi-VN") : "N/A"}</span>
+            <span>{fund.point_count} {"\u0111i\u1ec3m NAV"}</span>
+            <span>{fund.category}</span>
+          </div>
+        </div>
+        <div
+          className={`shrink-0 rounded-2xl px-3 py-2 text-right text-xs font-semibold ${
+            fund.daily_change_percent === null || fund.daily_change_percent === undefined
+              ? "bg-surface-container text-on-surface-variant"
+              : fund.daily_change_percent >= 0
+                ? "bg-primary/10 text-primary"
+                : "bg-[rgba(199,58,58,0.12)] text-[var(--color-error)]"
+          }`}
+        >
+          <div>{"Ng\u00e0y"}</div>
+          <div className="mt-1 text-sm">{formatPercent(fund.daily_change_percent)}</div>
+        </div>
+      </div>
+    </button>
   );
 }
 
