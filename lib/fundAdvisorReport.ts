@@ -31,6 +31,16 @@ type HoldingTrendItem = {
   stance: ReportTone;
 };
 
+type SoldHoldingItem = {
+  code: string;
+  assetType: HoldingAssetType;
+  previousWeight: number;
+  currentWeight: number;
+  weightSold: number;
+  monthChangePercent: number | null;
+  saleType: "reduced" | "exited";
+};
+
 export type AdvisorReport = {
   fundCode: string;
   generatedAt: string;
@@ -66,9 +76,11 @@ export type AdvisorReport = {
     previousDate: string | null;
     assetMix: Array<{ label: string; share: number }>;
     topTrends: HoldingTrendItem[];
+    soldPositions: SoldHoldingItem[];
     positiveTrendWeight: number | null;
     increasedWeightShare: number | null;
     explanation: string[];
+    saleExplanation: string[];
   };
   macroView: {
     cycleCall: string;
@@ -233,6 +245,37 @@ function buildAssetMix(rows: ReturnType<typeof aggregateHoldingRows>, latestDate
     .sort((left, right) => right.share - left.share);
 }
 
+function buildSaleExplanation(soldPositions: SoldHoldingItem[]) {
+  if (!soldPositions.length) {
+    return ["Chưa ghi nhận tín hiệu giảm tỷ trọng rõ rệt ở kỳ công bố gần nhất."];
+  }
+
+  const exited = soldPositions.filter((item) => item.saleType === "exited");
+  const reduced = soldPositions.filter((item) => item.saleType === "reduced");
+  const totalSold = soldPositions.reduce((sum, item) => sum + item.weightSold, 0);
+  const weakestPriceNames = soldPositions
+    .filter((item) => item.monthChangePercent !== null && item.monthChangePercent < 0)
+    .slice(0, 2)
+    .map((item) => item.code);
+
+  const lines: string[] = [];
+  lines.push(`Quỹ đã giảm tổng cộng khoảng ${totalSold.toFixed(2)}% tỷ trọng ở các vị thế bị cắt giảm trong kỳ gần nhất.`);
+
+  if (exited.length > 0) {
+    lines.push(`Có ${exited.length} vị thế đã được thoát hẳn khỏi danh mục, cho thấy quỹ đang chủ động dọn lại cấu trúc nắm giữ.`);
+  }
+
+  if (reduced.length > 0) {
+    lines.push(`Ngoài các vị thế thoát hẳn, quỹ còn hạ bớt tỷ trọng ở ${reduced.length} mã để giảm mức tập trung hoặc chốt bớt lãi/lỗ ngắn hạn.`);
+  }
+
+  if (weakestPriceNames.length > 0) {
+    lines.push(`Một phần lượng bán ra rơi vào các mã đang chịu áp lực giá như ${weakestPriceNames.join(", ")}, đây có thể là tín hiệu phòng thủ hoặc tái cơ cấu theo xu hướng thị trường.`);
+  }
+
+  return lines;
+}
+
 function buildMacroView(category: string, regime: AdvisorReport["marketRegime"], sectorAllocation: Array<{ label: string; share: number }>) {
   const tailwinds: string[] = [];
   const headwinds: string[] = [];
@@ -342,11 +385,13 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
   const concentration = buildHoldingMetrics(holdingRows, latestDate);
 
   const comparison = buildHoldingsComparison(holdingRows, latestDate, 4);
-  const trackedSymbols = latestRows
-    .filter((row) => row.asset_type === "equity")
-    .sort((left, right) => right.weight - left.weight)
-    .slice(0, 8)
-    .map((row) => row.stock_code);
+  const trackedSymbols = [...new Set(
+    comparison.rows
+      .filter((row) => row.asset_type === "equity")
+      .sort((left, right) => Math.max(right.weights[0] ?? 0, right.weights[1] ?? 0) - Math.max(left.weights[0] ?? 0, left.weights[1] ?? 0))
+      .slice(0, 12)
+      .map((row) => row.stock_code),
+  )];
   const priceSnapshots = await getStockPriceSnapshots(trackedSymbols);
 
   const topTrends: HoldingTrendItem[] = latestRows
@@ -372,6 +417,29 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
     });
 
   const totalTrackedWeight = sum(topTrends.map((item) => item.weight));
+  const soldPositions: SoldHoldingItem[] = comparison.rows
+    .map((row) => {
+      const currentWeight = row.weights[0] ?? 0;
+      const previousWeight = row.weights[1] ?? 0;
+      const weightSold = previousWeight - currentWeight;
+
+      if (previousWeight <= 0 || weightSold <= 0) {
+        return null;
+      }
+
+      return {
+        code: row.stock_code,
+        assetType: row.asset_type,
+        previousWeight,
+        currentWeight,
+        weightSold,
+        monthChangePercent: priceSnapshots.get(row.stock_code)?.monthChangePercent ?? row.monthChangePercent ?? null,
+        saleType: currentWeight <= 0 ? "exited" : "reduced",
+      } satisfies SoldHoldingItem;
+    })
+    .filter((item): item is SoldHoldingItem => Boolean(item))
+    .sort((left, right) => right.weightSold - left.weightSold)
+    .slice(0, 6);
   const positiveTrendWeight =
     totalTrackedWeight > 0
       ? toShare(sum(topTrends.filter((item) => (item.monthChangePercent ?? -Infinity) > 0).map((item) => item.weight)), totalTrackedWeight)
@@ -401,6 +469,7 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
   if (increasedWeightShare !== null) {
     holdingsExplanation.push(`${increasedWeightShare.toFixed(1)}% tỷ trọng trong nhóm nắm giữ lớn đã được nâng thêm so với kỳ công bố trước.`);
   }
+  const saleExplanation = buildSaleExplanation(soldPositions);
 
   const macroView = buildMacroView(formatCategory(fund.category), regime, details.sectorAllocation);
   const conclusion = buildConclusion({
@@ -443,9 +512,11 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
       previousDate,
       assetMix,
       topTrends,
+      soldPositions,
       positiveTrendWeight,
       increasedWeightShare,
       explanation: holdingsExplanation,
+      saleExplanation,
     },
     macroView,
     conclusion,

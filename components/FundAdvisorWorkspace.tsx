@@ -288,6 +288,42 @@ function HoldingsTrendTable({ report }: { report: AdvisorReport }) {
   );
 }
 
+function SoldHoldingsTable({ report }: { report: AdvisorReport }) {
+  if (!report.holdingsView.soldPositions.length) {
+    return (
+      <div className="rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-4 py-5 text-sm text-on-surface-variant">
+        Chưa ghi nhận vị thế bị giảm tỷ trọng đáng kể trong kỳ công bố gần nhất.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-[1.5rem] border border-outline-variant/50">
+      <div className="grid grid-cols-[1.1fr_0.8fr_0.8fr_0.8fr_0.9fr] gap-3 border-b border-outline-variant/30 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+        <span>Tài sản</span>
+        <span>Tỷ trọng trước</span>
+        <span>Tỷ trọng nay</span>
+        <span>Đã bán bớt</span>
+        <span>Giá 1 tháng</span>
+      </div>
+      {report.holdingsView.soldPositions.map((item) => (
+        <div key={`${item.code}-${item.saleType}`} className="grid grid-cols-[1.1fr_0.8fr_0.8fr_0.8fr_0.9fr] gap-3 border-b border-outline-variant/20 px-4 py-3 text-sm last:border-b-0">
+          <div>
+            <div className="font-semibold text-on-surface">{item.code}</div>
+            <div className="mt-1 text-xs text-on-surface-variant">{item.saleType === "exited" ? "Thoát hẳn vị thế" : "Giảm tỷ trọng"}</div>
+          </div>
+          <div className="text-on-surface-variant">{item.previousWeight.toFixed(2)}%</div>
+          <div className="text-on-surface-variant">{item.currentWeight.toFixed(2)}%</div>
+          <div className="font-semibold text-[var(--color-error)]">-{item.weightSold.toFixed(2)}%</div>
+          <div className={item.monthChangePercent !== null && item.monthChangePercent < 0 ? "text-[var(--color-error)]" : item.monthChangePercent !== null && item.monthChangePercent > 0 ? "text-primary" : "text-on-surface-variant"}>
+            {formatPercent(item.monthChangePercent)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }) {
   const [profile, setProfile] = useState<Profile>(defaultProfile);
   const [companyFilter, setCompanyFilter] = useState<string>("all");
@@ -376,6 +412,7 @@ export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }
               <div className="grid gap-4 xl:grid-cols-2"><ReportList title="Góc nhìn thị trường" items={[report.marketRegime.explanation, report.macroView.cycleCall]} /><ReportList title="Kết luận" items={[report.conclusion.summary, ...report.conclusion.recommendation]} /></div>
               <div className="grid gap-4 xl:grid-cols-2"><ReportList title="Yếu tố hỗ trợ" items={report.macroView.tailwinds} /><ReportList title="Yếu tố cần lưu ý" items={report.macroView.headwinds} warning /></div>
               <div className="grid gap-4 xl:grid-cols-2"><AllocationCard title="Cơ cấu tài sản hiện tại" items={report.holdingsView.assetMix} /><ReportList title="Diễn biến danh mục" items={report.holdingsView.explanation} /></div>
+              <div className="grid gap-4 xl:grid-cols-2"><div><div className="mb-3 text-sm font-bold uppercase tracking-[0.16em] text-primary">Những vị thế quỹ đã bán ra</div><SoldHoldingsTable report={report} /></div><ReportList title="Diễn giải động thái bán ra" items={report.holdingsView.saleExplanation} warning /></div>
               <div className="grid gap-4 xl:grid-cols-4"><ScoreTile label="Ngày dữ liệu mới nhất" value={report.fundHealth.latestNavDate ?? "Không có"} /><ScoreTile label="Độ tập trung HHI" value={formatNumber(report.fundHealth.hhi, 3)} /><ScoreTile label="Tỷ trọng đang tăng giá" value={formatPercent(report.holdingsView.positiveTrendWeight)} tone={metricTone(report.holdingsView.positiveTrendWeight, "higher")} /><ScoreTile label="Tỷ trọng được nâng thêm" value={formatPercent(report.holdingsView.increasedWeightShare)} tone={metricTone(report.holdingsView.increasedWeightShare, "higher")} /></div>
               <div><div className="mb-3 text-sm font-bold uppercase tracking-[0.16em] text-primary">Diễn biến các mã đang nắm giữ</div><HoldingsTrendTable report={report} /></div>
             </div> : <div className="mt-6 rounded-[1.6rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-5 py-6 text-sm text-on-surface-variant">Chưa tải được dữ liệu phân tích cho quỹ này.</div>}
