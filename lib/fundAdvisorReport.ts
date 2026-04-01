@@ -41,6 +41,16 @@ type SoldHoldingItem = {
   saleType: "reduced" | "exited";
 };
 
+type BoughtHoldingItem = {
+  code: string;
+  assetType: HoldingAssetType;
+  previousWeight: number;
+  currentWeight: number;
+  weightAdded: number;
+  monthChangePercent: number | null;
+  buyType: "increased" | "new";
+};
+
 export type AdvisorReport = {
   fundCode: string;
   generatedAt: string;
@@ -76,10 +86,12 @@ export type AdvisorReport = {
     previousDate: string | null;
     assetMix: Array<{ label: string; share: number }>;
     topTrends: HoldingTrendItem[];
+    boughtPositions: BoughtHoldingItem[];
     soldPositions: SoldHoldingItem[];
     positiveTrendWeight: number | null;
     increasedWeightShare: number | null;
     explanation: string[];
+    buyExplanation: string[];
     saleExplanation: string[];
   };
   macroView: {
@@ -276,6 +288,37 @@ function buildSaleExplanation(soldPositions: SoldHoldingItem[]) {
   return lines;
 }
 
+function buildBuyExplanation(boughtPositions: BoughtHoldingItem[]) {
+  if (!boughtPositions.length) {
+    return ["Chưa ghi nhận vị thế nào được nâng tỷ trọng rõ rệt trong kỳ công bố gần nhất."];
+  }
+
+  const newPositions = boughtPositions.filter((item) => item.buyType === "new");
+  const increased = boughtPositions.filter((item) => item.buyType === "increased");
+  const totalAdded = boughtPositions.reduce((sum, item) => sum + item.weightAdded, 0);
+  const strongestPriceNames = boughtPositions
+    .filter((item) => item.monthChangePercent !== null && item.monthChangePercent > 0)
+    .slice(0, 2)
+    .map((item) => item.code);
+
+  const lines: string[] = [];
+  lines.push(`Quỹ đã nâng tổng cộng khoảng ${totalAdded.toFixed(2)}% tỷ trọng vào các vị thế được ưu tiên trong kỳ gần nhất.`);
+
+  if (newPositions.length > 0) {
+    lines.push(`Có ${newPositions.length} vị thế mới được đưa vào danh mục, cho thấy quỹ đang mở thêm hướng giải ngân thay vì chỉ xoay quanh các mã cũ.`);
+  }
+
+  if (increased.length > 0) {
+    lines.push(`Ngoài các vị thế mới, quỹ còn tăng thêm tỷ trọng ở ${increased.length} mã đang nắm giữ, phản ánh quan điểm tiếp tục ưu tiên các tài sản này trong ngắn và trung hạn.`);
+  }
+
+  if (strongestPriceNames.length > 0) {
+    lines.push(`Một phần dòng tiền mới đang đi vào các mã có diễn biến giá tích cực như ${strongestPriceNames.join(", ")}, đây thường là tín hiệu cho thấy quỹ đang bám theo nhóm tài sản có xung lực tốt hơn.`);
+  }
+
+  return lines;
+}
+
 function buildMacroView(category: string, regime: AdvisorReport["marketRegime"], sectorAllocation: Array<{ label: string; share: number }>) {
   const tailwinds: string[] = [];
   const headwinds: string[] = [];
@@ -417,6 +460,29 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
     });
 
   const totalTrackedWeight = sum(topTrends.map((item) => item.weight));
+  const boughtPositions: BoughtHoldingItem[] = comparison.rows
+    .map((row) => {
+      const currentWeight = row.weights[0] ?? 0;
+      const previousWeight = row.weights[1] ?? 0;
+      const weightAdded = currentWeight - previousWeight;
+
+      if (currentWeight <= 0 || weightAdded <= 0) {
+        return null;
+      }
+
+      return {
+        code: row.stock_code,
+        assetType: row.asset_type,
+        previousWeight,
+        currentWeight,
+        weightAdded,
+        monthChangePercent: priceSnapshots.get(row.stock_code)?.monthChangePercent ?? row.monthChangePercent ?? null,
+        buyType: previousWeight <= 0 ? "new" : "increased",
+      } satisfies BoughtHoldingItem;
+    })
+    .filter((item): item is BoughtHoldingItem => Boolean(item))
+    .sort((left, right) => right.weightAdded - left.weightAdded)
+    .slice(0, 6);
   const soldPositions: SoldHoldingItem[] = comparison.rows
     .map((row) => {
       const currentWeight = row.weights[0] ?? 0;
@@ -469,6 +535,7 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
   if (increasedWeightShare !== null) {
     holdingsExplanation.push(`${increasedWeightShare.toFixed(1)}% tỷ trọng trong nhóm nắm giữ lớn đã được nâng thêm so với kỳ công bố trước.`);
   }
+  const buyExplanation = buildBuyExplanation(boughtPositions);
   const saleExplanation = buildSaleExplanation(soldPositions);
 
   const macroView = buildMacroView(formatCategory(fund.category), regime, details.sectorAllocation);
@@ -512,10 +579,12 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
       previousDate,
       assetMix,
       topTrends,
+      boughtPositions,
       soldPositions,
       positiveTrendWeight,
       increasedWeightShare,
       explanation: holdingsExplanation,
+      buyExplanation,
       saleExplanation,
     },
     macroView,

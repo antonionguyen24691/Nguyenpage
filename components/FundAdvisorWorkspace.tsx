@@ -6,9 +6,11 @@ import type { AdvisorReport } from "@/lib/fundAdvisorReport";
 
 type AdvisorGoal = "growth" | "income" | "balanced";
 type LiquidityNeed = "low" | "medium" | "high";
+type HorizonUnit = "month" | "year";
 type Profile = {
   riskTolerance: AdvisorRiskBand;
   horizon: number;
+  horizonUnit: HorizonUnit;
   liquidityNeed: LiquidityNeed;
   goal: AdvisorGoal;
   categoryFocus: "all" | "equity" | "bond" | "balanced";
@@ -18,6 +20,7 @@ type MetricTone = "neutral" | "positive" | "negative";
 const defaultProfile: Profile = {
   riskTolerance: "medium",
   horizon: 5,
+  horizonUnit: "year",
   liquidityNeed: "medium",
   goal: "balanced",
   categoryFocus: "all",
@@ -25,17 +28,26 @@ const defaultProfile: Profile = {
 
 const riskRank: Record<AdvisorRiskBand, number> = { low: 1, medium: 2, high: 3 };
 
+function toHorizonMonths(profile: Profile) {
+  return profile.horizonUnit === "year" ? profile.horizon * 12 : profile.horizon;
+}
+
+function formatHorizon(profile: Profile) {
+  return `${profile.horizon} ${profile.horizonUnit === "year" ? "năm" : "tháng"}`;
+}
+
 function calculateFitScore(fund: AdvisorFund, profile: Profile) {
+  const horizonMonths = toHorizonMonths(profile);
   const riskDistance = Math.abs(riskRank[fund.riskBand] - riskRank[profile.riskTolerance]);
   const riskFit = Math.max(0, 10 - riskDistance * 3.2);
   const horizonFit =
-    profile.horizon >= 5
+    horizonMonths >= 60
       ? fund.riskBand === "high"
         ? 9.5
         : fund.riskBand === "medium"
           ? 8.5
           : 7
-      : profile.horizon >= 3
+      : horizonMonths >= 36
         ? fund.riskBand === "medium"
           ? 9.2
           : 7.8
@@ -84,9 +96,9 @@ const formatRisk = (value: AdvisorRiskBand) => (value === "low" ? "Thận trọn
 const formatCategory = (value: Profile["categoryFocus"] | AdvisorFund["category"]) =>
   value === "bond" ? "Quỹ trái phiếu" : value === "balanced" ? "Quỹ cân bằng" : value === "equity" ? "Quỹ cổ phiếu" : "Tất cả";
 const buildPersona = (profile: Profile) =>
-  profile.riskTolerance === "high" && profile.horizon >= 5
+  profile.riskTolerance === "high" && toHorizonMonths(profile) >= 60
     ? "Nhà đầu tư tăng trưởng dài hạn"
-    : profile.riskTolerance === "low" || profile.goal === "income"
+    : profile.riskTolerance === "low" || profile.goal === "income" || toHorizonMonths(profile) <= 11
       ? "Nhà đầu tư ưu tiên ổn định"
       : "Nhà đầu tư cân bằng";
 const buildMarketState = (funds: AdvisorFund[]) =>
@@ -324,6 +336,42 @@ function SoldHoldingsTable({ report }: { report: AdvisorReport }) {
   );
 }
 
+function BoughtHoldingsTable({ report }: { report: AdvisorReport }) {
+  if (!report.holdingsView.boughtPositions.length) {
+    return (
+      <div className="rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-4 py-5 text-sm text-on-surface-variant">
+        Chưa ghi nhận vị thế nào được tăng tỷ trọng đáng kể trong kỳ công bố gần nhất.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-[1.5rem] border border-outline-variant/50">
+      <div className="grid grid-cols-[1.1fr_0.8fr_0.8fr_0.8fr_0.9fr] gap-3 border-b border-outline-variant/30 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+        <span>Tài sản</span>
+        <span>Tỷ trọng trước</span>
+        <span>Tỷ trọng nay</span>
+        <span>Đã mua thêm</span>
+        <span>Giá 1 tháng</span>
+      </div>
+      {report.holdingsView.boughtPositions.map((item) => (
+        <div key={`${item.code}-${item.buyType}`} className="grid grid-cols-[1.1fr_0.8fr_0.8fr_0.8fr_0.9fr] gap-3 border-b border-outline-variant/20 px-4 py-3 text-sm last:border-b-0">
+          <div>
+            <div className="font-semibold text-on-surface">{item.code}</div>
+            <div className="mt-1 text-xs text-on-surface-variant">{item.buyType === "new" ? "Mở vị thế mới" : "Tăng tỷ trọng"}</div>
+          </div>
+          <div className="text-on-surface-variant">{item.previousWeight.toFixed(2)}%</div>
+          <div className="text-on-surface-variant">{item.currentWeight.toFixed(2)}%</div>
+          <div className="font-semibold text-primary">+{item.weightAdded.toFixed(2)}%</div>
+          <div className={item.monthChangePercent !== null && item.monthChangePercent > 0 ? "text-primary" : item.monthChangePercent !== null && item.monthChangePercent < 0 ? "text-[var(--color-error)]" : "text-on-surface-variant"}>
+            {formatPercent(item.monthChangePercent)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }) {
   const [profile, setProfile] = useState<Profile>(defaultProfile);
   const [companyFilter, setCompanyFilter] = useState<string>("all");
@@ -371,7 +419,7 @@ export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }
             <p className="max-w-3xl text-base leading-8 text-on-surface-variant">Bạn chọn nhu cầu của mình, hệ thống sẽ sắp xếp các quỹ phù hợp và diễn giải bằng hiệu suất, mức biến động, cơ cấu danh mục và xu hướng của các tài sản đang nắm giữ.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard label="Chân dung nhà đầu tư" value={buildPersona(profile)} detail={`${formatRisk(profile.riskTolerance)} · ${profile.horizon} năm`} />
+            <StatCard label="Chân dung nhà đầu tư" value={buildPersona(profile)} detail={`${formatRisk(profile.riskTolerance)} · ${formatHorizon(profile)}`} />
             <StatCard label="Bối cảnh thị trường" value={buildMarketState(visibleFunds)} detail="Tổng hợp từ diễn biến gần đây của nhóm quỹ đang lọc" />
             <StatCard label="Quỹ phù hợp nhất" value={recommendations[0]?.fund.code ?? "Không có"} detail={recommendations[0] ? `Mức độ phù hợp ${recommendations[0].fitScore.toFixed(1)}/10` : "Chưa có gợi ý"} />
             <StatCard label="Số quỹ được chấm" value={String(visibleFunds.length)} detail={`${companyFilter === "all" ? "Tất cả công ty" : companyFilter} · ${formatCategory(profile.categoryFocus)}`} />
@@ -385,7 +433,7 @@ export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }
             <div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Hồ sơ tư vấn</p><h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">Chọn khẩu vị đầu tư</h2></div>
             <div className="space-y-4">
               <Field label="Khẩu vị rủi ro"><select value={profile.riskTolerance} onChange={(event) => setProfile((current) => ({ ...current, riskTolerance: event.target.value as AdvisorRiskBand }))} className="w-full rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"><option value="low">Thận trọng</option><option value="medium">Cân bằng</option><option value="high">Tăng trưởng</option></select></Field>
-              <Field label="Thời gian đầu tư"><input type="range" min={1} max={10} value={profile.horizon} onChange={(event) => setProfile((current) => ({ ...current, horizon: Number(event.target.value) }))} className="w-full" /><div className="mt-2 text-sm font-semibold text-on-surface">{profile.horizon} năm</div></Field>
+              <Field label="Thời gian đầu tư"><input type="range" min={1} max={10} value={profile.horizon} onChange={(event) => setProfile((current) => ({ ...current, horizon: Number(event.target.value) }))} className="w-full" /><div className="mt-2 text-sm font-semibold text-on-surface">{formatHorizon(profile)}</div></Field>
               <Field label="Nhu cầu thanh khoản"><select value={profile.liquidityNeed} onChange={(event) => setProfile((current) => ({ ...current, liquidityNeed: event.target.value as LiquidityNeed }))} className="w-full rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"><option value="low">Có thể giữ lâu</option><option value="medium">Cân bằng</option><option value="high">Cần rút linh hoạt</option></select></Field>
               <Field label="Mục tiêu ưu tiên"><select value={profile.goal} onChange={(event) => setProfile((current) => ({ ...current, goal: event.target.value as AdvisorGoal }))} className="w-full rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"><option value="growth">Tăng trưởng</option><option value="income">Ổn định / thu nhập</option><option value="balanced">Cân bằng</option></select></Field>
               <Field label="Loại quỹ ưu tiên"><select value={profile.categoryFocus} onChange={(event) => setProfile((current) => ({ ...current, categoryFocus: event.target.value as Profile["categoryFocus"] }))} className="w-full rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"><option value="all">Tất cả</option><option value="equity">Quỹ cổ phiếu</option><option value="balanced">Quỹ cân bằng</option><option value="bond">Quỹ trái phiếu</option></select></Field>
@@ -412,6 +460,7 @@ export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }
               <div className="grid gap-4 xl:grid-cols-2"><ReportList title="Góc nhìn thị trường" items={[report.marketRegime.explanation, report.macroView.cycleCall]} /><ReportList title="Kết luận" items={[report.conclusion.summary, ...report.conclusion.recommendation]} /></div>
               <div className="grid gap-4 xl:grid-cols-2"><ReportList title="Yếu tố hỗ trợ" items={report.macroView.tailwinds} /><ReportList title="Yếu tố cần lưu ý" items={report.macroView.headwinds} warning /></div>
               <div className="grid gap-4 xl:grid-cols-2"><AllocationCard title="Cơ cấu tài sản hiện tại" items={report.holdingsView.assetMix} /><ReportList title="Diễn biến danh mục" items={report.holdingsView.explanation} /></div>
+              <div className="grid gap-4 xl:grid-cols-2"><div><div className="mb-3 text-sm font-bold uppercase tracking-[0.16em] text-primary">Những vị thế quỹ đã mua vào</div><BoughtHoldingsTable report={report} /></div><ReportList title="Diễn giải động thái mua vào" items={report.holdingsView.buyExplanation} /></div>
               <div className="grid gap-4 xl:grid-cols-2"><div><div className="mb-3 text-sm font-bold uppercase tracking-[0.16em] text-primary">Những vị thế quỹ đã bán ra</div><SoldHoldingsTable report={report} /></div><ReportList title="Diễn giải động thái bán ra" items={report.holdingsView.saleExplanation} warning /></div>
               <div className="grid gap-4 xl:grid-cols-4"><ScoreTile label="Ngày dữ liệu mới nhất" value={report.fundHealth.latestNavDate ?? "Không có"} /><ScoreTile label="Độ tập trung HHI" value={formatNumber(report.fundHealth.hhi, 3)} /><ScoreTile label="Tỷ trọng đang tăng giá" value={formatPercent(report.holdingsView.positiveTrendWeight)} tone={metricTone(report.holdingsView.positiveTrendWeight, "higher")} /><ScoreTile label="Tỷ trọng được nâng thêm" value={formatPercent(report.holdingsView.increasedWeightShare)} tone={metricTone(report.holdingsView.increasedWeightShare, "higher")} /></div>
               <div><div className="mb-3 text-sm font-bold uppercase tracking-[0.16em] text-primary">Diễn biến các mã đang nắm giữ</div><HoldingsTrendTable report={report} /></div>
