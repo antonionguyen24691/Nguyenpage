@@ -118,9 +118,33 @@ function buildRationale(fund: AdvisorFund, profile: Profile) {
   if (profile.goal === "growth" && fund.category === "equity") items.push("Phù hợp với mục tiêu tăng trưởng vốn.");
   if (profile.goal === "income" && fund.category === "bond") items.push("Phù hợp với nhu cầu ưu tiên thu nhập và ổn định.");
   if (profile.goal === "balanced" && fund.category === "balanced") items.push("Cân bằng giữa tăng trưởng và phòng thủ.");
-  if (profile.horizon >= 5 && (fund.quarterlyChange ?? 0) > 0) items.push("Động lượng trung hạn đang ủng hộ chiến lược nắm giữ.");
+  if (toHorizonMonths(profile) >= 60 && (fund.quarterlyChange ?? 0) > 0) items.push("Động lượng trung hạn đang ủng hộ chiến lược nắm giữ.");
   if ((fund.hhi ?? 1) < 0.12) items.push("Danh mục không quá tập trung vào một vài vị thế.");
   return items.slice(0, 3);
+}
+
+function buildAllocationPlan(recommendations: Array<{ fund: AdvisorFund; fitScore: number }>, profile: Profile) {
+  if (!recommendations.length) return [];
+
+  const baseWeights = recommendations.map(({ fitScore }, index) => Math.max(fitScore, 1) + (recommendations.length - index) * 0.6);
+  const adjustedWeights = baseWeights.map((weight, index) => {
+    const fund = recommendations[index]?.fund;
+    if (!fund) return weight;
+
+    if (toHorizonMonths(profile) <= 11 && fund.riskBand === "low") return weight * 1.18;
+    if (toHorizonMonths(profile) <= 11 && fund.riskBand === "high") return weight * 0.76;
+    if (profile.goal === "income" && fund.category === "bond") return weight * 1.15;
+    if (profile.goal === "growth" && fund.category === "equity") return weight * 1.12;
+    if (profile.goal === "balanced" && fund.category === "balanced") return weight * 1.1;
+    return weight;
+  });
+
+  const total = adjustedWeights.reduce((sum, weight) => sum + weight, 0) || 1;
+  return recommendations.map(({ fund, fitScore }, index) => ({
+    fund,
+    fitScore,
+    share: Number(((adjustedWeights[index] / total) * 100).toFixed(1)),
+  }));
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -184,6 +208,48 @@ function AllocationCard({ title, items }: { title: string; items: Array<{ label:
             </div>
             <div className="h-2 rounded-full bg-white">
               <div className="h-2 rounded-full bg-gradient-to-r from-primary to-secondary" style={{ width: `${Math.min(item.share, 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AllocationPlanCard({ items }: { items: Array<{ fund: AdvisorFund; fitScore: number; share: number }> }) {
+  if (!items.length) {
+    return (
+      <div className="rounded-[1.6rem] border border-outline-variant/50 bg-surface-container-low p-4">
+        <div className="text-sm font-bold uppercase tracking-[0.16em] text-primary">Phân bổ tỷ trọng gợi ý</div>
+        <div className="mt-3 text-sm leading-7 text-on-surface-variant">Chưa có đủ dữ liệu để xây dựng phương án phân bổ.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-[1.6rem] border border-outline-variant/50 bg-surface-container-low p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-bold uppercase tracking-[0.16em] text-primary">Phân bổ tỷ trọng gợi ý</div>
+          <div className="mt-2 text-sm leading-7 text-on-surface-variant">Tỷ trọng được suy ra từ mức độ phù hợp, khẩu vị rủi ro và thời gian đầu tư đang chọn.</div>
+        </div>
+        <Badge>{items.length} quỹ</Badge>
+      </div>
+      <div className="mt-4 space-y-3">
+        {items.map(({ fund, fitScore, share }) => (
+          <div key={fund.code} className="rounded-[1.25rem] border border-outline-variant/40 bg-white px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-on-surface">{fund.code} · {fund.name}</div>
+                <div className="mt-1 text-xs text-on-surface-variant">{fund.company} · {formatCategory(fund.category)} · Độ phù hợp {fitScore.toFixed(1)}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">Tỷ trọng</div>
+                <div className="text-xl font-extrabold text-primary">{share.toFixed(1)}%</div>
+              </div>
+            </div>
+            <div className="mt-3 h-2 rounded-full bg-surface-container">
+              <div className="h-2 rounded-full bg-gradient-to-r from-primary to-secondary" style={{ width: `${Math.min(share, 100)}%` }} />
             </div>
           </div>
         ))}
@@ -382,6 +448,7 @@ export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }
   const companies = useMemo(() => ["all", ...new Set(funds.map((fund) => fund.company))], [funds]);
   const visibleFunds = useMemo(() => funds.filter((fund) => (companyFilter === "all" || fund.company === companyFilter) && (profile.categoryFocus === "all" || fund.category === profile.categoryFocus)), [companyFilter, funds, profile.categoryFocus]);
   const recommendations = useMemo(() => visibleFunds.map((fund) => ({ fund, fitScore: calculateFitScore(fund, profile) })).sort((left, right) => right.fitScore - left.fitScore).slice(0, 3), [profile, visibleFunds]);
+  const allocationPlan = useMemo(() => buildAllocationPlan(recommendations, profile), [profile, recommendations]);
   const highlightedFund = useMemo(() => visibleFunds.find((fund) => fund.code === selectedCode) ?? recommendations[0]?.fund ?? visibleFunds[0] ?? null, [recommendations, selectedCode, visibleFunds]);
   const highlightedFit = recommendations.find(({ fund }) => fund.code === highlightedFund?.code)?.fitScore ?? (highlightedFund ? calculateFitScore(highlightedFund, profile) : null);
   const highlightedCode = highlightedFund?.code ?? null;
@@ -433,7 +500,45 @@ export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }
             <div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Hồ sơ tư vấn</p><h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">Chọn khẩu vị đầu tư</h2></div>
             <div className="space-y-4">
               <Field label="Khẩu vị rủi ro"><select value={profile.riskTolerance} onChange={(event) => setProfile((current) => ({ ...current, riskTolerance: event.target.value as AdvisorRiskBand }))} className="w-full rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"><option value="low">Thận trọng</option><option value="medium">Cân bằng</option><option value="high">Tăng trưởng</option></select></Field>
-              <Field label="Thời gian đầu tư"><input type="range" min={1} max={10} value={profile.horizon} onChange={(event) => setProfile((current) => ({ ...current, horizon: Number(event.target.value) }))} className="w-full" /><div className="mt-2 text-sm font-semibold text-on-surface">{formatHorizon(profile)}</div></Field>
+              <Field label="Thời gian đầu tư">
+                <div className="mb-3 inline-flex rounded-full border border-outline-variant/70 bg-surface-container-low p-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setProfile((current) => ({
+                        ...current,
+                        horizonUnit: "month",
+                        horizon: Math.min(current.horizonUnit === "year" ? current.horizon * 12 : current.horizon, 11),
+                      }))
+                    }
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${profile.horizonUnit === "month" ? "bg-primary text-white" : "text-on-surface-variant"}`}
+                  >
+                    Tháng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setProfile((current) => ({
+                        ...current,
+                        horizonUnit: "year",
+                        horizon: Math.max(1, current.horizonUnit === "month" ? Math.ceil(current.horizon / 12) : current.horizon),
+                      }))
+                    }
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${profile.horizonUnit === "year" ? "bg-primary text-white" : "text-on-surface-variant"}`}
+                  >
+                    Năm
+                  </button>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={profile.horizonUnit === "month" ? 11 : 10}
+                  value={profile.horizon}
+                  onChange={(event) => setProfile((current) => ({ ...current, horizon: Number(event.target.value) }))}
+                  className="w-full"
+                />
+                <div className="mt-2 text-sm font-semibold text-on-surface">{formatHorizon(profile)}</div>
+              </Field>
               <Field label="Nhu cầu thanh khoản"><select value={profile.liquidityNeed} onChange={(event) => setProfile((current) => ({ ...current, liquidityNeed: event.target.value as LiquidityNeed }))} className="w-full rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"><option value="low">Có thể giữ lâu</option><option value="medium">Cân bằng</option><option value="high">Cần rút linh hoạt</option></select></Field>
               <Field label="Mục tiêu ưu tiên"><select value={profile.goal} onChange={(event) => setProfile((current) => ({ ...current, goal: event.target.value as AdvisorGoal }))} className="w-full rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"><option value="growth">Tăng trưởng</option><option value="income">Ổn định / thu nhập</option><option value="balanced">Cân bằng</option></select></Field>
               <Field label="Loại quỹ ưu tiên"><select value={profile.categoryFocus} onChange={(event) => setProfile((current) => ({ ...current, categoryFocus: event.target.value as Profile["categoryFocus"] }))} className="w-full rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"><option value="all">Tất cả</option><option value="equity">Quỹ cổ phiếu</option><option value="balanced">Quỹ cân bằng</option><option value="bond">Quỹ trái phiếu</option></select></Field>
@@ -444,6 +549,9 @@ export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }
           <section className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_46px_rgba(16,32,51,0.06)] md:p-6">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Danh sách gợi ý</p>
             <div className="mt-4 space-y-3">{recommendations.map(({ fund, fitScore }, index) => <RecommendationCard key={fund.code} fund={fund} fitScore={fitScore} profile={profile} index={index} active={fund.code === highlightedFund?.code} onSelect={() => setSelectedCode(fund.code)} />)}</div>
+            <div className="mt-5">
+              <AllocationPlanCard items={allocationPlan} />
+            </div>
           </section>
         </aside>
 
