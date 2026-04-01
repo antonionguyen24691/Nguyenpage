@@ -143,44 +143,44 @@ function buildMarketRegime(benchmarkHistory: ChartPoint[]) {
 
   if ((metrics.quarterly.percent ?? 0) >= 8 && (metrics.monthly.percent ?? 0) >= 2) {
     return {
-      label: "Risk-on expansion",
+      label: "Thi truong tang tich cuc",
       tone: "positive" as const,
       monthlyChange: metrics.monthly.percent,
       quarterlyChange: metrics.quarterly.percent,
       volatility,
-      explanation: "Dong luong thi truong dang tich cuc, kha nang nha dau tu uu tien tai san rui ro cao hon.",
+      explanation: "Thi truong dang giu nhip tang ro hon, dong tien co xu huong uu tien cac tai san co kha nang sinh loi cao.",
     };
   }
 
   if ((metrics.quarterly.percent ?? 0) > 0 && (metrics.monthly.percent ?? 0) < 0) {
     return {
-      label: "Pullback trong uptrend",
+      label: "Dang dieu chinh trong xu huong tang",
       tone: "neutral" as const,
       monthlyChange: metrics.monthly.percent,
       quarterlyChange: metrics.quarterly.percent,
       volatility,
-      explanation: "Thi truong van giu xu huong trung han tich cuc nhung dang co nhip dieu chinh ngan han.",
+      explanation: "Xu huong trung han van chua bi pha vo, nhung thi truong dang co mot nhip dieu chinh ngắn han can theo doi them.",
     };
   }
 
   if ((metrics.quarterly.percent ?? 0) <= -5) {
     return {
-      label: "Defensive contraction",
+      label: "Thi truong nghien ve phong thu",
       tone: "cautious" as const,
       monthlyChange: metrics.monthly.percent,
       quarterlyChange: metrics.quarterly.percent,
       volatility,
-      explanation: "Dong luong benchmark suy yeu, can uu tien quy phong thu va quan tri drawdown.",
+      explanation: "Dong luong thi truong dang suy yeu, uu tien luc nay la kiem soat bien dong va giu ky luat phan bo von.",
     };
   }
 
   return {
-    label: "Sideways rotation",
+    label: "Thi truong di ngang va phan hoa",
     tone: "neutral" as const,
     monthlyChange: metrics.monthly.percent,
     quarterlyChange: metrics.quarterly.percent,
     volatility,
-    explanation: "Thi truong di ngang va phan hoa, can tap trung vao chat luong danh muc va ky luat giai ngan.",
+    explanation: "Thi truong chua co xu huong that su ro rang, co hoi van co nhung can uu tien quy co cau truc chat che va du lieu on dinh.",
   };
 }
 
@@ -238,36 +238,36 @@ function buildMacroView(category: string, regime: AdvisorReport["marketRegime"],
   const headwinds: string[] = [];
 
   if (category === "equity") {
-    if (regime.tone === "positive") tailwinds.push("Risk appetite cua benchmark dang ung ho cho quy co ty trong co phieu cao.");
-    if (regime.tone === "cautious") headwinds.push("Dong luong thi truong yeu co the lam NAV quy co phieu bien dong manh hon.");
+    if (regime.tone === "positive") tailwinds.push("Boi canh hien tai dang ung ho nhom quy co phieu va cac chien luoc chap nhan bien dong cao hon.");
+    if (regime.tone === "cautious") headwinds.push("Khi thi truong yeu, quy co phieu thuong nhay cam hon voi nhung nhip giam ngắn han.");
   }
 
   if (category === "bond") {
-    if (regime.tone !== "positive") tailwinds.push("Moi truong phong thu thuong co loi hon cho quy uu tien trai phieu va tai san on dinh.");
-    if (regime.tone === "positive") headwinds.push("Khi benchmark chuyen sang risk-on, quy trai phieu co the kem hap dan tuong doi.");
+    if (regime.tone !== "positive") tailwinds.push("Moi truong de cao su on dinh thuong phu hop hon voi nhom quy trai phieu va tai san it bien dong.");
+    if (regime.tone === "positive") headwinds.push("Khi dong tien quay sang nhom tai san tang truong, quy trai phieu co the kem noi bat hon ve tuong doi.");
   }
 
   if (category === "balanced") {
-    tailwinds.push("Cau truc da tai san giup quy can bang de hap thu bien dong giua cac chu ky.");
+    tailwinds.push("Cau truc da tai san giup quy can bang de hap thu tot hon cac nhịp len xuong cua thi truong.");
   }
 
   const topSectors = sectorAllocation.slice(0, 3).map((item) => item.label.toLowerCase());
   if (topSectors.some((sector) => sector.includes("ngan hang"))) {
-    tailwinds.push("Ty trong ngan hang cao se nhay cam voi chu ky thanh khoan va tang truong tin dung.");
+    tailwinds.push("Ty trong ngan hang cao cho thay quy nhay cam voi chu ky tin dung va mat bang thanh khoan trong nen kinh te.");
   }
   if (topSectors.some((sector) => sector.includes("bat dong san"))) {
-    headwinds.push("Ty trong bat dong san can theo doi sat do nhay voi lai suat va dong tien.");
+    headwinds.push("Ty trong bat dong san can duoc theo doi sat vi nhom nay nhay cam voi lai suat, phap ly va dong tien.");
   }
   if (topSectors.some((sector) => sector.includes("cong nghe"))) {
-    tailwinds.push("Nhom cong nghe thuong duoc huong loi khi thi truong chap nhan valuation cao hon.");
+    tailwinds.push("Nhom cong nghe thuong duoc danh gia tich cuc hon khi thi truong san sang chap nhan muc dinh gia cao.");
   }
 
   const cycleCall =
-    regime.label === "Risk-on expansion"
-      ? "Chu ky hien tai uu tien tang truong co chon loc."
-      : regime.label === "Defensive contraction"
-        ? "Chu ky hien tai uu tien phong thu va giu ky luat drawdown."
-        : "Chu ky hien tai yeu cau chon loc va giai ngan theo nhieu nhip.";
+    regime.label === "Thi truong tang tich cuc"
+      ? "Giai doan hien tai nghien ve cac quy co kha nang tang truong, nhung van can chon loc ky."
+      : regime.label === "Thi truong nghien ve phong thu"
+        ? "Giai doan hien tai nen uu tien su on dinh va kha nang chiu rung lac cua danh muc."
+        : "Giai doan hien tai phu hop voi cach tiep can chon loc va giai ngan tung phan.";
 
   return { cycleCall, tailwinds: tailwinds.slice(0, 3), headwinds: headwinds.slice(0, 3) };
 }
@@ -295,25 +295,25 @@ function buildConclusion(input: {
   const recommendation =
     stance === "positive"
       ? [
-          "Co the dua vao shortlist uu tien neu profile chap nhan dung nhom tai san cua quy.",
-          "Phu hop cho giai ngan theo nhip khi benchmark va holdings cung xac nhan dong luong.",
+          "Day la mot ung vien dang uu tien neu khau vi rui ro cua nha dau tu phu hop voi nhom tai san cua quy.",
+          "Co the xem xet giai ngan theo tung nhịp, uu tien luc bối cảnh thị trường va danh muc ben trong dang dong thuan.",
         ]
       : stance === "neutral"
         ? [
-            "Nen tiep can theo kieu giai ngan tung phan va theo doi them benchmark trong vai tuan toi.",
-            "Can doi chieu them voi 1-2 quy dong nhom truoc khi tang ty trong.",
+            "Nen tiep can than trong hon, giai ngan tung phan va theo doi them dien bien cua thi truong trong cac tuan toi.",
+            "Nha dau tu nen doi chieu them voi mot vai quy cung nhom truoc khi nang ty trong.",
           ]
         : [
-            "Khong nen uu tien ty trong lon neu nha dau tu nhay cam voi bien dong ngan han.",
-            "Chi nen giu trong watchlist hoac giai ngan rat ky luat neu co ly do chien luoc ro rang.",
+            "Chua phu hop de dat ty trong lon neu nha dau tu nhay cam voi bien dong ngan han.",
+            "Nen uu tien theo doi them, chi giai ngan khi co ly do chien luoc that su ro rang va ky luat quan tri von chat che.",
           ];
 
   const summary =
     stance === "positive"
-      ? "Quy hien cho thay su dong pha kha tot giua hieu suat, cau truc holdings va boi canh benchmark."
+      ? "Quy dang cho thay su dong thuan kha ro giua hieu suat, co cau danh muc va bối cảnh thi truong."
       : stance === "neutral"
-        ? "Quy co diem tich cuc nhung chua du su dong pha de xem la lua chon uu tien tuyet doi."
-        : "Rui ro hien tai dang lon hon bien an toan, can uu tien quan sat hon la hanh dong manh.";
+        ? "Quy co mot so diem tich cuc, nhung chua du thuyet phuc de xem la lua chon uu tien cao nhat ngay luc nay."
+        : "Mat bang rui ro hien tai van cao, vi vay nen uu tien quan sat va giu su than trong hon la hanh dong manh.";
 
   return { stance, summary, recommendation };
 }
@@ -405,13 +405,13 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
 
   const holdingsExplanation: string[] = [];
   if (assetMix.length > 0) {
-    holdingsExplanation.push(`Quy hien uu tien ${assetMix[0].label.toLowerCase()} voi ty trong lon nhat ${assetMix[0].share.toFixed(1)}%.`);
+    holdingsExplanation.push(`Danh muc hien tai tap trung nhieu nhat vao nhom ${assetMix[0].label.toLowerCase()}, chiem ${assetMix[0].share.toFixed(1)}% tong ty trong.`);
   }
   if (positiveTrendWeight !== null) {
-    holdingsExplanation.push(`${positiveTrendWeight.toFixed(1)}% ty trong co phieu top holdings dang co trend gia 1 thang duong.`);
+    holdingsExplanation.push(`${positiveTrendWeight.toFixed(1)}% ty trong trong nhom co phieu nam giu lon dang co dien bien gia tich cuc trong 1 thang qua.`);
   }
   if (increasedWeightShare !== null) {
-    holdingsExplanation.push(`${increasedWeightShare.toFixed(1)}% ty trong top holdings dang duoc tang them so voi ky truoc.`);
+    holdingsExplanation.push(`${increasedWeightShare.toFixed(1)}% ty trong trong nhom nam giu lon da duoc nang them so voi ky cong bo truoc.`);
   }
 
   const macroView = buildMacroView(formatCategory(fund.category), regime, details.sectorAllocation);
