@@ -23,10 +23,10 @@ type HoldingsSyncResult = {
 };
 
 const SSIAM_PAGES: Record<string, string> = {
-  VLGF: "https://ssiam.com.vn/en/ssiam/fund-information-vlgf",
-  SSISCA: "https://ssiam.com.vn/en/fund-information-ssi-sca",
-  SSIBF: "https://ssiam.com.vn/en/ssiam/fund-information-ssibf",
-  "SSI-EF": "https://ssiam.com.vn/en/ssiam/fund-information-ssief",
+  VLGF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-vlgf",
+  SSISCA: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-sca",
+  SSIBF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssibf",
+  "SSI-EF": "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-ef",
 };
 
 const DRAGON_CODES = new Set(["DCDS", "DCDE", "DCBF", "DCIP"]);

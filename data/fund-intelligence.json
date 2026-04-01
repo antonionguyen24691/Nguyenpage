@@ -119940,31 +119940,85 @@
       "fund_code": "SSISCA",
       "nav": 45770.78,
       "date": "2025-12-04",
-      "source": "Fmarket"
+      "source": "SSIAM via Fmarket"
     },
     {
       "fund_code": "DCIP",
       "nav": 11799.05,
       "date": "2025-12-04",
-      "source": "Fmarket"
+      "source": "Dragon Capital via Fmarket"
     },
     {
       "fund_code": "SSIBF",
       "nav": 16380.16,
       "date": "2025-12-04",
-      "source": "Fmarket"
+      "source": "SSIAM via Fmarket"
     },
     {
       "fund_code": "VIBF",
       "nav": 19809.5,
       "date": "2025-12-04",
-      "source": "Fmarket"
+      "source": "VinaCapital via Fmarket"
     },
     {
       "fund_code": "VESAF",
       "nav": 34561.46,
       "date": "2025-12-04",
-      "source": "Fmarket"
+      "source": "VinaCapital via Fmarket"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 35827.97,
+      "date": "2025-12-04",
+      "source": "VinaCapital via Fmarket"
+    },
+    {
+      "fund_code": "VFF",
+      "nav": 25331.96,
+      "date": "2025-12-04",
+      "source": "VinaCapital via Fmarket"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 11812.72,
+      "date": "2025-12-04",
+      "source": "VinaCapital via Fmarket"
+    },
+    {
+      "fund_code": "VMEEF",
+      "nav": 16620.42,
+      "date": "2025-12-04",
+      "source": "VinaCapital via Fmarket"
+    },
+    {
+      "fund_code": "VLBF",
+      "nav": 12218.64,
+      "date": "2025-12-04",
+      "source": "VinaCapital via Fmarket"
+    },
+    {
+      "fund_code": "VLGF",
+      "nav": 13571.71,
+      "date": "2025-12-04",
+      "source": "SSIAM via Fmarket"
+    },
+    {
+      "fund_code": "SSI-EF",
+      "nav": 9836.97,
+      "date": "2025-12-04",
+      "source": "SSIAM via Fmarket"
+    },
+    {
+      "fund_code": "DCDS",
+      "nav": 105760.69,
+      "date": "2025-12-04",
+      "source": "Dragon Capital via Fmarket"
+    },
+    {
+      "fund_code": "DCDE",
+      "nav": 31280.99,
+      "date": "2025-12-04",
+      "source": "Dragon Capital via Fmarket"
     },
     {
       "fund_code": "SSIBF",
@@ -121653,8 +121707,44 @@
       "source": "VinaCapital official daily NAV"
     },
     {
+      "fund_code": "VEOF",
+      "nav": 38130.57,
+      "date": "2026-02-21",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 36763.52,
+      "date": "2026-02-21",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12883.91,
+      "date": "2026-02-21",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
       "fund_code": "VMEEF",
       "nav": 18377.3,
+      "date": "2026-02-22",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 38545.49,
+      "date": "2026-02-22",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 37377.75,
+      "date": "2026-02-22",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 13003.19,
       "date": "2026-02-22",
       "source": "VinaCapital official daily NAV"
     },
@@ -121678,9 +121768,9 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 36763.52,
+      "nav": 37602.94,
       "date": "2026-02-23",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
@@ -121691,6 +121781,18 @@
     {
       "fund_code": "VMEEF",
       "nav": 18491.96,
+      "date": "2026-02-23",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 38726.63,
+      "date": "2026-02-23",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 13109.16,
       "date": "2026-02-23",
       "source": "VinaCapital official daily NAV"
     },
@@ -121720,13 +121822,25 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 37377.75,
+      "nav": 37844.83,
       "date": "2026-02-24",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 18533.94,
+      "date": "2026-02-24",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 38942.58,
+      "date": "2026-02-24",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 13207.64,
       "date": "2026-02-24",
       "source": "VinaCapital official daily NAV"
     },
@@ -121756,9 +121870,9 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 37602.94,
+      "nav": 37880.52,
       "date": "2026-02-25",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
@@ -121769,6 +121883,18 @@
     {
       "fund_code": "VMEEF",
       "nav": 18619.46,
+      "date": "2026-02-25",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 39028.23,
+      "date": "2026-02-25",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 13266.86,
       "date": "2026-02-25",
       "source": "VinaCapital official daily NAV"
     },
@@ -121863,8 +121989,44 @@
       "source": "VinaCapital official daily NAV"
     },
     {
+      "fund_code": "VEOF",
+      "nav": 38953.73,
+      "date": "2026-02-28",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 37845.99,
+      "date": "2026-02-28",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 13296.75,
+      "date": "2026-02-28",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
       "fund_code": "VMEEF",
       "nav": 18355.97,
+      "date": "2026-03-01",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 38625.88,
+      "date": "2026-03-01",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 37677.58,
+      "date": "2026-03-01",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 13265.52,
       "date": "2026-03-01",
       "source": "VinaCapital official daily NAV"
     },
@@ -121888,9 +122050,9 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 37845.99,
+      "nav": 37198.19,
       "date": "2026-03-02",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
@@ -121901,6 +122063,18 @@
     {
       "fund_code": "VMEEF",
       "nav": 18073.57,
+      "date": "2026-03-02",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 38070.72,
+      "date": "2026-03-02",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 13162.58,
       "date": "2026-03-02",
       "source": "VinaCapital official daily NAV"
     },
@@ -121924,9 +122098,9 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 37677.58,
+      "nav": 36990.75,
       "date": "2026-03-03",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
@@ -121937,6 +122111,18 @@
     {
       "fund_code": "VMEEF",
       "nav": 18012.07,
+      "date": "2026-03-03",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 37873.87,
+      "date": "2026-03-03",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 13100.82,
       "date": "2026-03-03",
       "source": "VinaCapital official daily NAV"
     },
@@ -121972,13 +122158,25 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 37198.19,
+      "nav": 36390.77,
       "date": "2026-03-04",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 17736.27,
+      "date": "2026-03-04",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 37255.07,
+      "date": "2026-03-04",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12857.1,
       "date": "2026-03-04",
       "source": "VinaCapital official daily NAV"
     },
@@ -122055,8 +122253,56 @@
       "source": "VinaCapital official daily NAV"
     },
     {
+      "fund_code": "VEOF",
+      "nav": 36628.48,
+      "date": "2026-03-07",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 35879.58,
+      "date": "2026-03-07",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VIBF",
+      "nav": 20094.84,
+      "date": "2026-03-07",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12610.74,
+      "date": "2026-03-07",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
       "fund_code": "VMEEF",
       "nav": 16307.39,
+      "date": "2026-03-08",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 34190.52,
+      "date": "2026-03-08",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 33538.59,
+      "date": "2026-03-08",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VIBF",
+      "nav": 19401.96,
+      "date": "2026-03-08",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 11768.21,
       "date": "2026-03-08",
       "source": "VinaCapital official daily NAV"
     },
@@ -122080,19 +122326,31 @@
     },
     {
       "fund_code": "VIBF",
-      "nav": 20094.84,
+      "nav": 19782.18,
       "date": "2026-03-09",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VESAF",
-      "nav": 35879.58,
+      "nav": 34469.52,
       "date": "2026-03-09",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 16905.52,
+      "date": "2026-03-09",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 35509.28,
+      "date": "2026-03-09",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12192.48,
       "date": "2026-03-09",
       "source": "VinaCapital official daily NAV"
     },
@@ -122116,19 +122374,31 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 33538.59,
+      "nav": 35577.57,
       "date": "2026-03-10",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
-      "nav": 19401.96,
+      "nav": 20056.61,
       "date": "2026-03-10",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 17420.56,
+      "date": "2026-03-10",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 36639.97,
+      "date": "2026-03-10",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12554.66,
       "date": "2026-03-10",
       "source": "VinaCapital official daily NAV"
     },
@@ -122158,19 +122428,31 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 34469.52,
+      "nav": 35170.78,
       "date": "2026-03-11",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
-      "nav": 19782.18,
+      "nav": 19978.86,
       "date": "2026-03-11",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 17213.07,
+      "date": "2026-03-11",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 36318.19,
+      "date": "2026-03-11",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12496.24,
       "date": "2026-03-11",
       "source": "VinaCapital official daily NAV"
     },
@@ -122247,8 +122529,56 @@
       "source": "VinaCapital official daily NAV"
     },
     {
+      "fund_code": "VEOF",
+      "nav": 36093.26,
+      "date": "2026-03-14",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 34981.88,
+      "date": "2026-03-14",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VIBF",
+      "nav": 19915.71,
+      "date": "2026-03-14",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12425.61,
+      "date": "2026-03-14",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
       "fund_code": "VMEEF",
       "nav": 17130.04,
+      "date": "2026-03-15",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 36126.26,
+      "date": "2026-03-15",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 34865.05,
+      "date": "2026-03-15",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VIBF",
+      "nav": 19893.17,
+      "date": "2026-03-15",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12437.38,
       "date": "2026-03-15",
       "source": "VinaCapital official daily NAV"
     },
@@ -122272,19 +122602,31 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 34981.88,
+      "nav": 35253.47,
       "date": "2026-03-16",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
-      "nav": 19915.71,
+      "nav": 19923.76,
       "date": "2026-03-16",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 17313.16,
+      "date": "2026-03-16",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 36332.57,
+      "date": "2026-03-16",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12475.45,
       "date": "2026-03-16",
       "source": "VinaCapital official daily NAV"
     },
@@ -122308,19 +122650,31 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 34865.05,
+      "nav": 35261.99,
       "date": "2026-03-17",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
-      "nav": 19893.17,
+      "nav": 19875.86,
       "date": "2026-03-17",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 17289.35,
+      "date": "2026-03-17",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 36225.67,
+      "date": "2026-03-17",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12425.98,
       "date": "2026-03-17",
       "source": "VinaCapital official daily NAV"
     },
@@ -122350,19 +122704,31 @@
     },
     {
       "fund_code": "VIBF",
-      "nav": 19923.76,
+      "nav": 19792.92,
       "date": "2026-03-18",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VESAF",
-      "nav": 35253.47,
+      "nav": 34990.91,
       "date": "2026-03-18",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 17185.26,
+      "date": "2026-03-18",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 36023.97,
+      "date": "2026-03-18",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12394.43,
       "date": "2026-03-18",
       "source": "VinaCapital official daily NAV"
     },
@@ -122439,8 +122805,56 @@
       "source": "VinaCapital official daily NAV"
     },
     {
+      "fund_code": "VEOF",
+      "nav": 35417.28,
+      "date": "2026-03-21",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 34553.51,
+      "date": "2026-03-21",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VIBF",
+      "nav": 19611.59,
+      "date": "2026-03-21",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12268.81,
+      "date": "2026-03-21",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
       "fund_code": "VMEEF",
       "nav": 16421.23,
+      "date": "2026-03-22",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 34114.63,
+      "date": "2026-03-22",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 33546.93,
+      "date": "2026-03-22",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VIBF",
+      "nav": 19292.45,
+      "date": "2026-03-22",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 11823.37,
       "date": "2026-03-22",
       "source": "VinaCapital official daily NAV"
     },
@@ -122470,19 +122884,31 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 34553.51,
+      "nav": 34434.22,
       "date": "2026-03-23",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
-      "nav": 19611.59,
+      "nav": 19527.11,
       "date": "2026-03-23",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 16856.18,
+      "date": "2026-03-23",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 34963.9,
+      "date": "2026-03-23",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12125.36,
       "date": "2026-03-23",
       "source": "VinaCapital official daily NAV"
     },
@@ -122512,19 +122938,25 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 33546.93,
+      "nav": 35434.53,
       "date": "2026-03-24",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
-      "nav": 19292.45,
+      "nav": 19740.99,
       "date": "2026-03-24",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 17317.88,
+      "date": "2026-03-24",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 35818.37,
       "date": "2026-03-24",
       "source": "VinaCapital official daily NAV"
     },
@@ -122560,21 +122992,39 @@
     },
     {
       "fund_code": "VESAF",
-      "nav": 34434.22,
+      "nav": 35200.69,
       "date": "2026-03-25",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VIBF",
-      "nav": 19527.11,
+      "nav": 19698.26,
       "date": "2026-03-25",
-      "source": "Fmarket"
+      "source": "VinaCapital official daily NAV"
     },
     {
       "fund_code": "VMEEF",
       "nav": 17102.29,
       "date": "2026-03-25",
       "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 35608,
+      "date": "2026-03-25",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12371.87,
+      "date": "2026-03-25",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "SSI-EF",
+      "nav": 9614.82,
+      "date": "2026-03-25",
+      "source": "SSIAM official"
     },
     {
       "fund_code": "SSISCA",
@@ -122613,10 +123063,16 @@
       "source": "Fmarket"
     },
     {
+      "fund_code": "SSI-EF",
+      "nav": 9772.15,
+      "date": "2026-03-26",
+      "source": "SSIAM official"
+    },
+    {
       "fund_code": "DCBF",
       "nav": 29460.98,
       "date": "2026-03-27",
-      "source": "Fmarket"
+      "source": "Dragon Capital via Fmarket page"
     },
     {
       "fund_code": "SSIBF",
@@ -122653,6 +123109,186 @@
       "nav": 19698.26,
       "date": "2026-03-27",
       "source": "Fmarket"
+    },
+    {
+      "fund_code": "SSI-EF",
+      "nav": 9718.39,
+      "date": "2026-03-27",
+      "source": "SSIAM official"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 36212.72,
+      "date": "2026-03-28",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 35763.77,
+      "date": "2026-03-28",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VIBF",
+      "nav": 19864,
+      "date": "2026-03-28",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12550.61,
+      "date": "2026-03-28",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VMEEF",
+      "nav": 17420.51,
+      "date": "2026-03-28",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 36004.95,
+      "date": "2026-03-29",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 35556.5,
+      "date": "2026-03-29",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VIBF",
+      "nav": 19797.18,
+      "date": "2026-03-29",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12472.11,
+      "date": "2026-03-29",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VMEEF",
+      "nav": 17289.94,
+      "date": "2026-03-29",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "VFF",
+      "nav": 24.92,
+      "date": "2026-03-30",
+      "source": "VinaCapital official daily NAV"
+    },
+    {
+      "fund_code": "SSISCA",
+      "nav": 45641.28,
+      "date": "2026-03-30",
+      "source": "SSIAM official"
+    },
+    {
+      "fund_code": "SSIBF",
+      "nav": 16639.44,
+      "date": "2026-03-30",
+      "source": "SSIAM official"
+    },
+    {
+      "fund_code": "VLGF",
+      "nav": 13223.06,
+      "date": "2026-03-30",
+      "source": "SSIAM official"
+    },
+    {
+      "fund_code": "SSI-EF",
+      "nav": 9830.39,
+      "date": "2026-03-30",
+      "source": "SSIAM official"
+    },
+    {
+      "fund_code": "VEOF",
+      "nav": 36004.95,
+      "date": "2026-03-31",
+      "source": "VinaCapital via Fmarket page"
+    },
+    {
+      "fund_code": "VESAF",
+      "nav": 35556.5,
+      "date": "2026-03-31",
+      "source": "VinaCapital via Fmarket page"
+    },
+    {
+      "fund_code": "VFF",
+      "nav": 25925.73,
+      "date": "2026-03-31",
+      "source": "VinaCapital via Fmarket page"
+    },
+    {
+      "fund_code": "VIBF",
+      "nav": 19797.18,
+      "date": "2026-03-31",
+      "source": "VinaCapital via Fmarket page"
+    },
+    {
+      "fund_code": "VDEF",
+      "nav": 12472.11,
+      "date": "2026-03-31",
+      "source": "VinaCapital via Fmarket page"
+    },
+    {
+      "fund_code": "VMEEF",
+      "nav": 17289.94,
+      "date": "2026-03-31",
+      "source": "VinaCapital via Fmarket page"
+    },
+    {
+      "fund_code": "VLBF",
+      "nav": 12422.77,
+      "date": "2026-03-31",
+      "source": "VinaCapital via Fmarket page"
+    },
+    {
+      "fund_code": "SSISCA",
+      "nav": 45264.98,
+      "date": "2026-03-31",
+      "source": "SSIAM official"
+    },
+    {
+      "fund_code": "SSIBF",
+      "nav": 16651.93,
+      "date": "2026-03-31",
+      "source": "SSIAM official"
+    },
+    {
+      "fund_code": "VLGF",
+      "nav": 13119.87,
+      "date": "2026-03-31",
+      "source": "SSIAM official"
+    },
+    {
+      "fund_code": "SSI-EF",
+      "nav": 9780.26,
+      "date": "2026-03-31",
+      "source": "SSIAM official"
+    },
+    {
+      "fund_code": "DCDS",
+      "nav": 100494.67,
+      "date": "2026-03-31",
+      "source": "Dragon Capital via Fmarket page"
+    },
+    {
+      "fund_code": "DCDE",
+      "nav": 30609.61,
+      "date": "2026-03-31",
+      "source": "Dragon Capital via Fmarket page"
+    },
+    {
+      "fund_code": "DCIP",
+      "nav": 12027.68,
+      "date": "2026-04-01",
+      "source": "Dragon Capital via Fmarket page"
     }
   ],
   "holdings": [
@@ -123839,5 +124475,5 @@
       "date": "2025-01-01"
     }
   ],
-  "updatedAt": "2026-03-29T13:34:53.410Z"
+  "updatedAt": "2026-04-01T05:55:54.744Z"
 }

@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { Inter, Manrope } from "next/font/google";
+import { Be_Vietnam_Pro, Manrope } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import DynamicNav from "@/components/DynamicNav";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const beVietnamPro = Be_Vietnam_Pro({
+  variable: "--font-body",
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700"],
 });
@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`light ${inter.variable} ${manrope.variable} h-full antialiased`}
+      className={`light ${beVietnamPro.variable} ${manrope.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

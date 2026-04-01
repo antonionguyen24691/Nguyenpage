@@ -23,6 +23,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("pages");
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
   
   const [pages, setPages] = useState<any[]>([]);
   const [links, setLinks] = useState<any[]>([]);
@@ -136,14 +137,32 @@ export default function AdminDashboard() {
     try {
       if (!confirm("Tiến trình đồng bộ sẽ quét tất cả các Quỹ, việc này mất một ít thời gian. Bạn có chắc chắn bắt đầu không?")) return;
       setIsSyncing(true);
-      const res = await fetch("/api/cron/fund-sync");
+      setSyncMessage("");
+      const adminToken = sessionStorage.getItem("admin_token");
+      const res = await fetch("/api/admin/fund-sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-token": adminToken || "",
+        },
+        body: JSON.stringify({ mode: "all" }),
+      });
       const data = await res.json();
       if (data.success) {
-        alert("Đồng bộ dữ liệu quỹ hoàn tất: " + data.data.successCount + " bản ghi thành công.");
+        const navCount = data.data?.nav?.successCount ?? 0;
+        const holdingsCount = Array.isArray(data.data?.holdings)
+          ? data.data.holdings.filter((item: { success?: boolean }) => item.success).length
+          : 0;
+        const message = `Đồng bộ hoàn tất. NAV: ${navCount} bản ghi, holdings: ${holdingsCount} quỹ xử lý thành công.`;
+        setSyncMessage(message);
+        alert(message);
       } else {
-        alert("Có lỗi: " + data.message);
+        const message = "Có lỗi: " + (data.message || data.error || "Không xác định");
+        setSyncMessage(message);
+        alert(message);
       }
     } catch {
+      setSyncMessage("Lỗi kết nối khi đồng bộ.");
       alert("Lỗi kết nối khi đồng bộ!");
     } finally {
       setIsSyncing(false);
@@ -523,6 +542,11 @@ export default function AdminDashboard() {
                 <div>
                   <h1 className="font-headline font-bold text-3xl text-on-surface">Cài đặt Hệ thống & Tích hợp</h1>
                   <p className="text-on-surface-variant text-sm mt-2">Cấu hình kết nối API Chatbot AI và CRM qua Google Sheets.</p>
+                  {syncMessage ? (
+                    <p className="mt-3 rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-sm text-on-surface">
+                      {syncMessage}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex gap-3">
                   <button 
@@ -535,7 +559,7 @@ export default function AdminDashboard() {
                     ) : (
                       <span className="material-symbols-outlined text-[20px]">sync</span>
                     )}
-                    {isSyncing ? 'Đang chạy...' : 'Crawl/Sync NAV Quỹ'}
+                    {isSyncing ? 'Đang chạy...' : 'Crawl NAV & Danh mục quỹ'}
                   </button>
                   <button 
                     onClick={() => alert("Đã lưu cấu hình hệ thống thành công!")}

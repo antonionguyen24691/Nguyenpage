@@ -13,10 +13,10 @@ type FundData = {
 
 const productIdCache = new Map<string, number | null>();
 const SSIAM_PAGE_MAP: Record<string, string> = {
-  VLGF: "https://ssiam.com.vn/en/ssiam/fund-information-vlgf",
-  SSISCA: "https://ssiam.com.vn/en/fund-information-ssi-sca",
-  SSIBF: "https://ssiam.com.vn/en/ssiam/fund-information-ssibf",
-  "SSI-EF": "https://ssiam.com.vn/en/ssiam/fund-information-ssief",
+  VLGF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-vlgf",
+  SSISCA: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-sca",
+  SSIBF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssibf",
+  "SSI-EF": "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-ef",
 };
 const DRAGON_CODES = new Set(["DCDS", "DCDE", "DCBF", "DCIP"]);
 const USER_AGENT =
@@ -276,6 +276,8 @@ function parseVinaFactsheetLinks(entry: FundCatalogEntry, html: string) {
     .map(([date, url]) => ({ date, url }));
 }
 
+// Kept for future VinaCapital direct collector recovery when official pages become crawlable again.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function fetchVinaNav(entry: FundCatalogEntry): Promise<FundData[]> {
   const pageUrl = buildVinaFundPageUrl(entry);
   if (!pageUrl) {
@@ -400,6 +402,8 @@ function buildVinaStaticXlsxCandidates(entry: FundCatalogEntry, daysBack = 120) 
   return candidates;
 }
 
+// Kept for future VinaCapital static-file collector recovery when naming patterns stabilize again.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function fetchVinaStaticNav(entry: FundCatalogEntry): Promise<FundData[]> {
   try {
     const rows: FundData[] = [];
@@ -467,16 +471,23 @@ async function fetchSsiamNav(entry: FundCatalogEntry): Promise<FundData[]> {
     });
     const html = await response.text();
     const $ = cheerio.load(html);
-    const sourceText = $(".infonav_history").text().replace(/\s+/g, " ").trim();
-    const regex = /(\d{2}\/\d{2}\/\d{4})\s+[\d,]+\s+\d+\s+([\d,]+\.\d{2})/g;
     const rows: FundData[] = [];
-    let match: RegExpExecArray | null;
 
-    while ((match = regex.exec(sourceText))) {
-      const date = normalizeSlashDate(match[1]);
-      const nav = parseLocalizedNav(match[2]);
+    $(".infonav_history tr").each((_, row) => {
+      const cells = $(row)
+        .find("th,td")
+        .map((__, cell) => $(cell).text().replace(/\s+/g, " ").trim())
+        .get()
+        .filter(Boolean);
+
+      if (cells.length < 4) {
+        return;
+      }
+
+      const date = normalizeSlashDate(cells[0]);
+      const nav = parseLocalizedNav(cells[3]);
       if (!date || nav === null) {
-        continue;
+        return;
       }
 
       rows.push({
@@ -485,7 +496,7 @@ async function fetchSsiamNav(entry: FundCatalogEntry): Promise<FundData[]> {
         date,
         source: `${entry.company} official`,
       });
-    }
+    });
 
     return rows;
   } catch (error) {
@@ -598,8 +609,7 @@ async function fetchOfficialNav(entry: FundCatalogEntry): Promise<FundData[]> {
   }
 
   if (entry.company === "VinaCapital") {
-    const staticRows = await fetchVinaStaticNav(entry);
-    return staticRows.length > 0 ? staticRows : fetchVinaNav(entry);
+    return [];
   }
 
   return [];

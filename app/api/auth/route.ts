@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { issueAdminToken } from "@/lib/adminAuth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,11 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (username === validUsername && password === validPassword) {
-      // Generate a simple session token
-      const token =
-        Date.now().toString(36) +
-        Math.random().toString(36).substring(2) +
-        Math.random().toString(36).substring(2);
+      const token = issueAdminToken(username);
 
       return NextResponse.json({ success: true, token });
     }

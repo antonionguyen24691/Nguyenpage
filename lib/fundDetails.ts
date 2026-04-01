@@ -1,3 +1,4 @@
+import * as cheerio from "cheerio";
 import { getFundCatalogEntry, type FundCatalogEntry } from "@/lib/fundCatalog";
 import {
   aggregateHoldingRows,
@@ -48,10 +49,10 @@ export type FundDetailsPayload = {
 };
 
 const SSIAM_PAGE_MAP: Record<string, string> = {
-  VLGF: "https://ssiam.com.vn/en/ssiam/fund-information-vlgf",
-  SSISCA: "https://ssiam.com.vn/en/fund-information-ssi-sca",
-  SSIBF: "https://ssiam.com.vn/en/ssiam/fund-information-ssibf",
-  "SSI-EF": "https://ssiam.com.vn/en/ssiam/fund-information-ssief",
+  VLGF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-vlgf",
+  SSISCA: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-sca",
+  SSIBF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssibf",
+  "SSI-EF": "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-ef",
 };
 
 const DRAGON_PAGE_MAP: Record<string, string> = {
@@ -108,14 +109,6 @@ function startOfMonth(value: string) {
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
-}
-
-function formatCompactDate(date: Date) {
-  return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}`;
-}
-
-function formatDotDate(date: Date) {
-  return `${pad(date.getUTCDate())}.${pad(date.getUTCMonth() + 1)}.${date.getUTCFullYear()}`;
 }
 
 function formatMonthLabel(date: Date) {
@@ -176,6 +169,47 @@ function inferSector(stockCode: string, assetType: HoldingAssetType) {
   return sectorMap[stockCode] ?? "Khác";
 }
 
+function absoluteUrl(url: string, base: string) {
+  return new URL(url, base).toString();
+}
+
+function inferDocumentDate(href: string) {
+  const compact = href.match(/(20\d{6})/);
+  if (compact) {
+    return `${compact[1].slice(0, 4)}-${compact[1].slice(4, 6)}-${compact[1].slice(6, 8)}`;
+  }
+
+  const monthYear = href.match(/(0?\d)[_/-](20\d{2})/);
+  if (monthYear) {
+    return `${monthYear[2]}-${String(Number(monthYear[1])).padStart(2, "0")}-01`;
+  }
+
+  return null;
+}
+
+function categorizeSsiamDocument(href: string) {
+  const normalized = decodeURIComponent(href).toLowerCase();
+  if (normalized.includes("ban cao bach")) {
+    return { title: "Bản cáo bạch", category: "Bản cáo bạch" };
+  }
+  if (normalized.includes("dieu le")) {
+    return { title: "Điều lệ quỹ", category: "Điều lệ" };
+  }
+  if (normalized.includes("factsheet")) {
+    return { title: "Factsheet", category: "Factsheet" };
+  }
+  if (normalized.includes("bao cao thang")) {
+    return { title: "Báo cáo tháng", category: "Báo cáo tháng" };
+  }
+  if (normalized.includes("giatritaisanrongquymo")) {
+    return { title: "Giá trị tài sản ròng", category: "NAV hằng ngày" };
+  }
+  if (normalized.includes("bcthaydoigttsr")) {
+    return { title: "Báo cáo thay đổi GTTSR", category: "NAV hằng tuần" };
+  }
+  return { title: "Tài liệu quỹ", category: "Tài liệu" };
+}
+
 function buildVinaDocuments(entry: FundCatalogEntry, referenceDate: string | null) {
   const documents: FundDetailDocument[] = [];
 
@@ -190,52 +224,6 @@ function buildVinaDocuments(entry: FundCatalogEntry, referenceDate: string | nul
 
   if (!referenceDate) {
     return documents;
-  }
-
-  const reportMonth = startOfMonth(referenceDate);
-  const publishMonth = new Date(Date.UTC(reportMonth.getUTCFullYear(), reportMonth.getUTCMonth() + 1, 15));
-  const publishCompact = formatCompactDate(publishMonth);
-  const reportLabel = reportMonth.toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).replace(" ", "-");
-
-  documents.push({
-    title: "Factsheet tháng gần nhất",
-    category: "Factsheet",
-    url: `https://wm.vinacapital.com/wp-content/uploads/${publishMonth.getUTCFullYear()}/${pad(publishMonth.getUTCMonth() + 1)}/${publishCompact}-VINACAPITAL-${entry.code}_Monthly-Factsheet_${reportLabel}-EN.pdf`,
-    date: normalizeDate(reportMonth),
-  });
-
-  if (entry.code === "VEOF") {
-    documents.push({
-      title: "Báo cáo NAV ngày",
-      category: "NAV hằng ngày",
-      url: `https://wm.vinacapital.com/wp-content/uploads/${publishMonth.getUTCFullYear()}/${pad(publishMonth.getUTCMonth() + 1)}/${publishCompact}_VEOF_BC_Ngay_Ky-so_${formatCompactDate(new Date(referenceDate))}.xlsx`,
-      date: referenceDate,
-    });
-  } else if (["VDEF", "VESAF", "VIBF", "VMEEF"].includes(entry.code)) {
-    documents.push({
-      title: "Báo cáo NAV ngày",
-      category: "NAV hằng ngày",
-      url: `https://wm.vinacapital.com/wp-content/uploads/${publishMonth.getUTCFullYear()}/${pad(publishMonth.getUTCMonth() + 1)}/${publishCompact}_${entry.code}_BC_Daily_${formatCompactDate(new Date(referenceDate))}.xlsx`,
-      date: referenceDate,
-    });
-  } else if (entry.code === "VLBF") {
-    documents.push({
-      title: "Báo cáo NAV ngày",
-      category: "NAV hằng ngày",
-      url: `https://wm.vinacapital.com/wp-content/uploads/${publishMonth.getUTCFullYear()}/${pad(publishMonth.getUTCMonth() + 1)}/${publishCompact}-VLBF-NAV-NGAY-${formatDotDate(new Date(referenceDate))}.xlsx`,
-      date: referenceDate,
-    });
-  } else if (entry.code === "VFF") {
-    documents.push({
-      title: "Báo cáo kỳ gần nhất",
-      category: "NAV định kỳ",
-      url: `https://wm.vinacapital.com/wp-content/uploads/${publishMonth.getUTCFullYear()}/${pad(publishMonth.getUTCMonth() + 1)}/${publishCompact}_VFF_BC_Ky_Ky-so_${formatCompactDate(new Date(referenceDate))}.xlsx`,
-      date: referenceDate,
-    });
   }
 
   return documents;
@@ -255,8 +243,8 @@ function buildSsiamDocuments(entry: FundCatalogEntry, referenceDate: string | nu
       date: null,
     },
     {
-      title: "Khu vực báo cáo tháng",
-      category: "Tài liệu",
+      title: "Khu vực công bố thông tin và tài liệu",
+      category: "Cổng thông tin",
       url: pageUrl,
       date: referenceDate,
     },
@@ -273,12 +261,109 @@ function buildDragonDocuments(entry: FundCatalogEntry, referenceDate: string | n
       date: null,
     },
     {
-      title: "Bài công bố NAV / báo cáo gần nhất",
-      category: "Tài liệu",
+      title: "Khu vực công bố NAV / báo cáo",
+      category: "Cổng thông tin",
       url: pageUrl,
       date: referenceDate,
     },
   ] satisfies FundDetailDocument[];
+}
+
+async function fetchSsiamDocuments(entry: FundCatalogEntry) {
+  const pageUrl = SSIAM_PAGE_MAP[entry.code];
+  if (!pageUrl) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(pageUrl, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return [];
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const documents = new Map<string, FundDetailDocument>();
+
+    $("a[href]").each((_, element) => {
+      const href = $(element).attr("href");
+      if (!href || !/\.pdf|\.xlsx/i.test(href)) {
+        return;
+      }
+
+      const url = absoluteUrl(href, pageUrl);
+      const meta = categorizeSsiamDocument(href);
+      documents.set(url, {
+        title: meta.title,
+        category: meta.category,
+        url,
+        date: inferDocumentDate(href),
+      });
+    });
+
+    return [...documents.values()]
+      .sort((left, right) => new Date(right.date ?? 0).getTime() - new Date(left.date ?? 0).getTime())
+      .slice(0, 8);
+  } catch {
+    return [];
+  }
+}
+
+async function fetchDragonDocuments(entry: FundCatalogEntry) {
+  const pageUrl = DRAGON_PAGE_MAP[entry.code] ?? "https://dautu.dragoncapital.com.vn/";
+
+  try {
+    const response = await fetch("https://dautu.dragoncapital.com.vn/sitemap.xml", {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return [];
+    }
+
+    const sitemap = await response.text();
+    return [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)]
+      .map((match) => match[1])
+      .filter((url) => /bao-cao-hoat-dong-quy/i.test(url) && new RegExp(entry.code, "i").test(url))
+      .slice(0, 4)
+      .map((url) => ({
+        title: "Bài công bố hoạt động quỹ",
+        category: "Công bố thông tin",
+        url,
+        date: inferDocumentDate(url),
+      }));
+  } catch {
+    return [
+      {
+        title: "Trang quỹ / công bố thông tin",
+        category: "Cổng thông tin",
+        url: pageUrl,
+        date: null,
+      },
+    ];
+  }
+}
+
+export async function resolveOfficialDocuments(fundCode: string, fallbackDocuments: FundDetailDocument[]) {
+  const entry = getFundCatalogEntry(fundCode);
+  if (!entry) {
+    return fallbackDocuments;
+  }
+
+  if (entry.company === "SSIAM") {
+    const liveDocuments = await fetchSsiamDocuments(entry);
+    return liveDocuments.length > 0 ? [...fallbackDocuments.slice(0, 1), ...liveDocuments] : fallbackDocuments;
+  }
+
+  if (entry.company === "Dragon Capital") {
+    const liveDocuments = await fetchDragonDocuments(entry);
+    return liveDocuments.length > 0 ? [...fallbackDocuments.slice(0, 1), ...liveDocuments] : fallbackDocuments;
+  }
+
+  return fallbackDocuments;
 }
 
 function buildDocuments(entry: FundCatalogEntry, latestNavDate: string | null, latestHoldingsDate: string | null) {

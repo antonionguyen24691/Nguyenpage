@@ -135,8 +135,8 @@ export default function FundDetailPanel({
                   {document.category}
                 </div>
                 <div className="mt-2 text-lg font-extrabold text-on-surface">{document.title}</div>
-                <div className="mt-2 break-all text-sm leading-6 text-on-surface-variant">
-                  {document.url}
+                <div className="mt-2 text-sm leading-6 text-on-surface-variant">
+                  Mở liên kết nguồn chính thức
                 </div>
                 <div className="mt-3 text-xs font-semibold text-on-surface-variant">
                   {document.date

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getFundDataset } from "@/lib/fundDataStore";
-import { buildFundDetails } from "@/lib/fundDetails";
+import { buildFundDetails, resolveOfficialDocuments } from "@/lib/fundDetails";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +26,15 @@ export async function GET(request: Request) {
       );
     }
 
+    const documents = await resolveOfficialDocuments(fundCode, details.documents);
+
     return NextResponse.json({
       success: true,
       fund: fundCode,
-      data: details,
+      data: {
+        ...details,
+        documents,
+      },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
