@@ -4,6 +4,7 @@ import {
   calculateNavMetrics,
   normalizeDate,
   sanitizeNavHistory,
+  toChartSeries,
   type FundHoldingRecord,
   type FundNavRecord,
 } from "@/lib/fundAnalytics";
@@ -39,6 +40,7 @@ export type AdvisorFund = {
   navAgeDays: number | null;
   riskBand: AdvisorRiskBand;
   qualityScore: number;
+  chartSeries: Array<{ time: string; value: number }>;
   scores: {
     momentum: number;
     resilience: number;
@@ -197,6 +199,7 @@ export function buildAdvisorUniverse(dataset: AdvisorDataset): AdvisorFund[] {
         pointCount: navMetrics.pointCount,
         navAgeDays,
         riskBand: getRiskBand(fund.category ?? "equity"),
+        chartSeries: toChartSeries(navHistory).slice(-180),
         assetAllocation: details.assetAllocation,
         sectorAllocation: details.sectorAllocation,
       };
