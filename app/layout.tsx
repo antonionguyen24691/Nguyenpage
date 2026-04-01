@@ -20,7 +20,7 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Nguyen Page | Financial Systems & SaaS Studio",
   description:
-    "Hệ thống tài chính và SaaS hiện đại cho doanh nghiệp cần sự ổn định, vận hành gọn và trải nghiệm tốt hơn.",
+    "He thong tai chinh va SaaS hien dai cho doanh nghiep can su on dinh, van hanh gon va trai nghiem tot hon.",
 };
 
 export const viewport: Viewport = {
@@ -70,59 +70,65 @@ export default function RootLayout({
                 Nguyen Page
               </div>
               <p className="max-w-sm text-sm leading-7 text-on-surface-variant">
-                Nền tảng tài chính và SaaS được làm mới theo hướng gọn, sáng, dễ vận hành và dễ mở rộng hơn.
+                Nen tang tai chinh va SaaS duoc lam moi theo huong gon, sang, de van hanh va de mo rong hon.
               </p>
             </div>
 
             <div className="space-y-3">
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-on-surface-variant">
-                Hệ thống
+                He thong
               </p>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/">
-                Trang chủ
+                Trang chu
               </Link>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/dang-ky">
-                Đăng ký
+                Dang ky
+              </Link>
+              <Link className="block text-sm text-on-surface hover:text-primary" href="/advisor">
+                Advisor quy
               </Link>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/fund-intelligence">
-                Thông tin quỹ
+                Thong tin quy
               </Link>
             </div>
 
             <div className="space-y-3">
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-on-surface-variant">
-                Điều hướng nhanh
+                Dieu huong nhanh
               </p>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/service/bank">
-                Tư vấn tài chính
+                Tu van tai chinh
               </Link>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/service/saas">
-                Giải pháp SaaS
+                Giai phap SaaS
+              </Link>
+              <Link className="block text-sm text-on-surface hover:text-primary" href="/advisor">
+                Tim quy chat luong
               </Link>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/fund-intelligence">
-                Phân tích quỹ
+                Phan tich quy
               </Link>
             </div>
 
             <div className="space-y-4 rounded-3xl border border-outline-variant/60 bg-gradient-to-br from-primary/10 via-white to-secondary/10 p-5">
               <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
-                Vận hành mới
+                Van hanh moi
               </p>
               <h3 className="font-headline text-xl font-bold text-on-surface">
-                Truy cập nhanh vào luồng đăng ký và khu vực tư vấn.
+                Truy cap nhanh vao luong dang ky va khu vuc tu van.
               </h3>
               <Link
-                href="/dang-ky"
+                href="/advisor"
                 className="inline-flex items-center gap-2 rounded-full bg-on-surface px-4 py-2 text-sm font-semibold text-white hover:bg-primary"
               >
-                Bắt đầu ngay
+                Bat dau ngay
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </Link>
             </div>
           </div>
 
           <div className="border-t border-outline-variant/40 px-6 py-4 text-center text-xs text-on-surface-variant md:px-8">
-            © 2026 Nguyen Page. Hệ thống được tinh chỉnh để vận hành mượt và rõ ràng hơn.
+            © 2026 Nguyen Page. He thong duoc tinh chinh de van hanh muot va ro rang hon.
           </div>
         </footer>
         <Analytics />

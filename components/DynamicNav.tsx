@@ -13,10 +13,11 @@ interface NavLink {
 }
 
 const defaultLinks: NavLink[] = [
-  { id: 1, label: "Trang chủ", url: "/", order: 1, visible: true },
-  { id: 2, label: "Dịch vụ", url: "/service/bank", order: 2, visible: true },
-  { id: 3, label: "Hỗ trợ", url: "/dang-ky", order: 3, visible: true },
-  { id: 4, label: "Thông tin quỹ", url: "/fund-intelligence", order: 4, visible: true },
+  { id: 1, label: "Trang chu", url: "/", order: 1, visible: true },
+  { id: 2, label: "Dich vu", url: "/service/bank", order: 2, visible: true },
+  { id: 3, label: "Advisor", url: "/advisor", order: 3, visible: true },
+  { id: 4, label: "Ho tro", url: "/dang-ky", order: 4, visible: true },
+  { id: 5, label: "Thong tin quy", url: "/fund-intelligence", order: 5, visible: true },
 ];
 
 export default function DynamicNav() {
@@ -29,13 +30,25 @@ export default function DynamicNav() {
       try {
         const res = await fetch("/api/config?key=links");
         const data = await res.json();
+
         if (data.value && Array.isArray(data.value)) {
           const parsed = data.value as NavLink[];
-          setLinks(parsed.filter((link) => link.visible).sort((a, b) => a.order - b.order));
+          const merged = [...parsed];
+
+          for (const defaultLink of defaultLinks) {
+            if (!merged.some((link) => link.url === defaultLink.url)) {
+              merged.push(defaultLink);
+            }
+          }
+
+          setLinks(merged.filter((link) => link.visible).sort((a, b) => a.order - b.order));
+          return;
         }
       } catch {
-        setLinks(defaultLinks);
+        // fall back to default links
       }
+
+      setLinks(defaultLinks);
     };
 
     loadLinks();
@@ -89,13 +102,13 @@ export default function DynamicNav() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <div className="rounded-full border border-outline-variant/70 bg-surface-container px-3 py-2 text-xs font-semibold text-on-surface-variant">
-            Không gian trực tuyến
+            Khong gian truc tuyen
           </div>
           <Link
-            href="/dang-ky"
+            href="/advisor"
             className="inline-flex items-center gap-2 rounded-full bg-on-surface px-4 py-2 text-sm font-semibold text-white hover:bg-primary"
           >
-            Tư vấn ngay
+            Tu van ngay
             <span className="material-symbols-outlined text-[18px]">north_east</span>
           </Link>
         </div>
@@ -104,7 +117,7 @@ export default function DynamicNav() {
           type="button"
           onClick={() => setOpen((value) => !value)}
           className="flex h-11 w-11 items-center justify-center rounded-2xl border border-outline-variant/70 bg-white text-on-surface lg:hidden"
-          aria-label="Bật tắt điều hướng"
+          aria-label="Bat tat dieu huong"
         >
           <span className="material-symbols-outlined">{open ? "close" : "menu"}</span>
         </button>
@@ -132,10 +145,10 @@ export default function DynamicNav() {
             })}
           </div>
           <Link
-            href="/dang-ky"
+            href="/advisor"
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-on-surface px-4 py-3 text-sm font-semibold text-white hover:bg-primary"
           >
-            Bắt đầu tư vấn
+            Bat dau tu van
             <span className="material-symbols-outlined text-[18px]">bolt</span>
           </Link>
         </div>
