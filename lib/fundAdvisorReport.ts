@@ -143,44 +143,44 @@ function buildMarketRegime(benchmarkHistory: ChartPoint[]) {
 
   if ((metrics.quarterly.percent ?? 0) >= 8 && (metrics.monthly.percent ?? 0) >= 2) {
     return {
-      label: "Thi truong tang tich cuc",
+      label: "Thị trường tăng tích cực",
       tone: "positive" as const,
       monthlyChange: metrics.monthly.percent,
       quarterlyChange: metrics.quarterly.percent,
       volatility,
-      explanation: "Thi truong dang giu nhip tang ro hon, dong tien co xu huong uu tien cac tai san co kha nang sinh loi cao.",
+      explanation: "Thị trường đang giữ nhịp tăng rõ hơn, dòng tiền có xu hướng ưu tiên các tài sản có khả năng sinh lợi cao.",
     };
   }
 
   if ((metrics.quarterly.percent ?? 0) > 0 && (metrics.monthly.percent ?? 0) < 0) {
     return {
-      label: "Dang dieu chinh trong xu huong tang",
+      label: "Đang điều chỉnh trong xu hướng tăng",
       tone: "neutral" as const,
       monthlyChange: metrics.monthly.percent,
       quarterlyChange: metrics.quarterly.percent,
       volatility,
-      explanation: "Xu huong trung han van chua bi pha vo, nhung thi truong dang co mot nhip dieu chinh ngắn han can theo doi them.",
+      explanation: "Xu hướng trung hạn vẫn chưa bị phá vỡ, nhưng thị trường đang có một nhịp điều chỉnh ngắn hạn cần theo dõi thêm.",
     };
   }
 
   if ((metrics.quarterly.percent ?? 0) <= -5) {
     return {
-      label: "Thi truong nghien ve phong thu",
+      label: "Thị trường nghiêng về phòng thủ",
       tone: "cautious" as const,
       monthlyChange: metrics.monthly.percent,
       quarterlyChange: metrics.quarterly.percent,
       volatility,
-      explanation: "Dong luong thi truong dang suy yeu, uu tien luc nay la kiem soat bien dong va giu ky luat phan bo von.",
+      explanation: "Động lượng thị trường đang suy yếu, ưu tiên lúc này là kiểm soát biến động và giữ kỷ luật phân bổ vốn.",
     };
   }
 
   return {
-    label: "Thi truong di ngang va phan hoa",
+    label: "Thị trường đi ngang và phân hóa",
     tone: "neutral" as const,
     monthlyChange: metrics.monthly.percent,
     quarterlyChange: metrics.quarterly.percent,
     volatility,
-    explanation: "Thi truong chua co xu huong that su ro rang, co hoi van co nhung can uu tien quy co cau truc chat che va du lieu on dinh.",
+    explanation: "Thị trường chưa có xu hướng thật sự rõ ràng, cơ hội vẫn có nhưng cần ưu tiên quỹ có cấu trúc chặt chẽ và dữ liệu ổn định.",
   };
 }
 
@@ -202,17 +202,17 @@ function buildHoldingMetrics(rows: ReturnType<typeof aggregateHoldingRows>, late
 function getAssetTypeLabel(assetType: HoldingAssetType) {
   switch (assetType) {
     case "bond":
-      return "Bond";
+      return "Trái phiếu";
     case "cash":
-      return "Cash";
+      return "Tiền mặt";
     case "deposit":
-      return "Deposit";
+      return "Tiền gửi";
     case "fund":
-      return "Fund";
+      return "Chứng chỉ quỹ";
     case "other":
-      return "Other";
+      return "Tài sản khác";
     default:
-      return "Equity";
+      return "Cổ phiếu";
   }
 }
 
@@ -238,36 +238,36 @@ function buildMacroView(category: string, regime: AdvisorReport["marketRegime"],
   const headwinds: string[] = [];
 
   if (category === "equity") {
-    if (regime.tone === "positive") tailwinds.push("Boi canh hien tai dang ung ho nhom quy co phieu va cac chien luoc chap nhan bien dong cao hon.");
-    if (regime.tone === "cautious") headwinds.push("Khi thi truong yeu, quy co phieu thuong nhay cam hon voi nhung nhip giam ngắn han.");
+    if (regime.tone === "positive") tailwinds.push("Bối cảnh hiện tại đang ủng hộ nhóm quỹ cổ phiếu và các chiến lược chấp nhận biến động cao hơn.");
+    if (regime.tone === "cautious") headwinds.push("Khi thị trường yếu, quỹ cổ phiếu thường nhạy cảm hơn với các nhịp giảm ngắn hạn.");
   }
 
   if (category === "bond") {
-    if (regime.tone !== "positive") tailwinds.push("Moi truong de cao su on dinh thuong phu hop hon voi nhom quy trai phieu va tai san it bien dong.");
-    if (regime.tone === "positive") headwinds.push("Khi dong tien quay sang nhom tai san tang truong, quy trai phieu co the kem noi bat hon ve tuong doi.");
+    if (regime.tone !== "positive") tailwinds.push("Môi trường đề cao sự ổn định thường phù hợp hơn với nhóm quỹ trái phiếu và tài sản ít biến động.");
+    if (regime.tone === "positive") headwinds.push("Khi dòng tiền quay sang nhóm tài sản tăng trưởng, quỹ trái phiếu có thể kém nổi bật hơn về tương đối.");
   }
 
   if (category === "balanced") {
-    tailwinds.push("Cau truc da tai san giup quy can bang de hap thu tot hon cac nhịp len xuong cua thi truong.");
+    tailwinds.push("Cấu trúc đa tài sản giúp quỹ cân bằng dễ hấp thụ tốt hơn các nhịp lên xuống của thị trường.");
   }
 
   const topSectors = sectorAllocation.slice(0, 3).map((item) => item.label.toLowerCase());
-  if (topSectors.some((sector) => sector.includes("ngan hang"))) {
-    tailwinds.push("Ty trong ngan hang cao cho thay quy nhay cam voi chu ky tin dung va mat bang thanh khoan trong nen kinh te.");
+  if (topSectors.some((sector) => sector.includes("ngân hàng") || sector.includes("ngan hang"))) {
+    tailwinds.push("Tỷ trọng ngân hàng cao cho thấy quỹ nhạy cảm với chu kỳ tín dụng và mặt bằng thanh khoản trong nền kinh tế.");
   }
-  if (topSectors.some((sector) => sector.includes("bat dong san"))) {
-    headwinds.push("Ty trong bat dong san can duoc theo doi sat vi nhom nay nhay cam voi lai suat, phap ly va dong tien.");
+  if (topSectors.some((sector) => sector.includes("bất động sản") || sector.includes("bat dong san"))) {
+    headwinds.push("Tỷ trọng bất động sản cần được theo dõi sát vì nhóm này nhạy cảm với lãi suất, pháp lý và dòng tiền.");
   }
-  if (topSectors.some((sector) => sector.includes("cong nghe"))) {
-    tailwinds.push("Nhom cong nghe thuong duoc danh gia tich cuc hon khi thi truong san sang chap nhan muc dinh gia cao.");
+  if (topSectors.some((sector) => sector.includes("công nghệ") || sector.includes("cong nghe"))) {
+    tailwinds.push("Nhóm công nghệ thường được đánh giá tích cực hơn khi thị trường sẵn sàng chấp nhận mức định giá cao.");
   }
 
   const cycleCall =
-    regime.label === "Thi truong tang tich cuc"
-      ? "Giai doan hien tai nghien ve cac quy co kha nang tang truong, nhung van can chon loc ky."
-      : regime.label === "Thi truong nghien ve phong thu"
-        ? "Giai doan hien tai nen uu tien su on dinh va kha nang chiu rung lac cua danh muc."
-        : "Giai doan hien tai phu hop voi cach tiep can chon loc va giai ngan tung phan.";
+    regime.label === "Thị trường tăng tích cực"
+      ? "Giai đoạn hiện tại nghiêng về các quỹ có khả năng tăng trưởng, nhưng vẫn cần chọn lọc kỹ."
+      : regime.label === "Thị trường nghiêng về phòng thủ"
+        ? "Giai đoạn hiện tại nên ưu tiên sự ổn định và khả năng chịu rung lắc của danh mục."
+        : "Giai đoạn hiện tại phù hợp với cách tiếp cận chọn lọc và giải ngân từng phần.";
 
   return { cycleCall, tailwinds: tailwinds.slice(0, 3), headwinds: headwinds.slice(0, 3) };
 }
@@ -295,25 +295,25 @@ function buildConclusion(input: {
   const recommendation =
     stance === "positive"
       ? [
-          "Day la mot ung vien dang uu tien neu khau vi rui ro cua nha dau tu phu hop voi nhom tai san cua quy.",
-          "Co the xem xet giai ngan theo tung nhịp, uu tien luc bối cảnh thị trường va danh muc ben trong dang dong thuan.",
+          "Đây là một ứng viên đáng ưu tiên nếu khẩu vị rủi ro của nhà đầu tư phù hợp với nhóm tài sản của quỹ.",
+          "Có thể xem xét giải ngân theo từng nhịp, ưu tiên lúc bối cảnh thị trường và danh mục bên trong đang đồng thuận.",
         ]
       : stance === "neutral"
         ? [
-            "Nen tiep can than trong hon, giai ngan tung phan va theo doi them dien bien cua thi truong trong cac tuan toi.",
-            "Nha dau tu nen doi chieu them voi mot vai quy cung nhom truoc khi nang ty trong.",
+            "Nên tiếp cận thận trọng hơn, giải ngân từng phần và theo dõi thêm diễn biến của thị trường trong các tuần tới.",
+            "Nhà đầu tư nên đối chiếu thêm với một vài quỹ cùng nhóm trước khi nâng tỷ trọng.",
           ]
         : [
-            "Chua phu hop de dat ty trong lon neu nha dau tu nhay cam voi bien dong ngan han.",
-            "Nen uu tien theo doi them, chi giai ngan khi co ly do chien luoc that su ro rang va ky luat quan tri von chat che.",
+            "Chưa phù hợp để đặt tỷ trọng lớn nếu nhà đầu tư nhạy cảm với biến động ngắn hạn.",
+            "Nên ưu tiên theo dõi thêm, chỉ giải ngân khi có lý do chiến lược thật sự rõ ràng và kỷ luật quản trị vốn chặt chẽ.",
           ];
 
   const summary =
     stance === "positive"
-      ? "Quy dang cho thay su dong thuan kha ro giua hieu suat, co cau danh muc va bối cảnh thi truong."
+      ? "Quỹ đang cho thấy sự đồng thuận khá rõ giữa hiệu suất, cơ cấu danh mục và bối cảnh thị trường."
       : stance === "neutral"
-        ? "Quy co mot so diem tich cuc, nhung chua du thuyet phuc de xem la lua chon uu tien cao nhat ngay luc nay."
-        : "Mat bang rui ro hien tai van cao, vi vay nen uu tien quan sat va giu su than trong hon la hanh dong manh.";
+        ? "Quỹ có một số điểm tích cực, nhưng chưa đủ thuyết phục để xem là lựa chọn ưu tiên cao nhất ngay lúc này."
+        : "Mặt bằng rủi ro hiện tại vẫn cao, vì vậy nên ưu tiên quan sát và giữ sự thận trọng hơn là hành động mạnh.";
 
   return { stance, summary, recommendation };
 }
@@ -334,9 +334,7 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
   const maxDrawdown = computeMaxDrawdown(navHistory);
 
   const holdingRows = aggregateHoldingRows(dataset.holdings.filter((row) => row.fund_code === normalizedCode));
-  const holdingDates = [...new Set(holdingRows.map((row) => normalizeDate(row.date)))].sort(
-    (left, right) => new Date(right).getTime() - new Date(left).getTime(),
-  );
+  const holdingDates = [...new Set(holdingRows.map((row) => normalizeDate(row.date)))].sort((left, right) => new Date(right).getTime() - new Date(left).getTime());
   const latestDate = holdingDates[0] ?? null;
   const previousDate = holdingDates[1] ?? null;
   const latestRows = latestDate ? holdingRows.filter((row) => normalizeDate(row.date) === latestDate) : [];
@@ -361,11 +359,7 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
       const monthChangePercent = snapshot?.monthChangePercent ?? null;
       const changeVsPrevious = comparisonRow?.changeVsPrevious ?? null;
       const stance: ReportTone =
-        (monthChangePercent ?? -Infinity) > 0 && (changeVsPrevious ?? -Infinity) >= 0
-          ? "positive"
-          : (monthChangePercent ?? Infinity) < 0
-            ? "cautious"
-            : "neutral";
+        (monthChangePercent ?? -Infinity) > 0 && (changeVsPrevious ?? -Infinity) >= 0 ? "positive" : (monthChangePercent ?? Infinity) < 0 ? "cautious" : "neutral";
 
       return {
         code: row.stock_code,
@@ -380,17 +374,11 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
   const totalTrackedWeight = sum(topTrends.map((item) => item.weight));
   const positiveTrendWeight =
     totalTrackedWeight > 0
-      ? toShare(
-          sum(topTrends.filter((item) => (item.monthChangePercent ?? -Infinity) > 0).map((item) => item.weight)),
-          totalTrackedWeight,
-        )
+      ? toShare(sum(topTrends.filter((item) => (item.monthChangePercent ?? -Infinity) > 0).map((item) => item.weight)), totalTrackedWeight)
       : null;
   const increasedWeightShare =
     totalTrackedWeight > 0
-      ? toShare(
-          sum(topTrends.filter((item) => (item.changeVsPrevious ?? -Infinity) > 0).map((item) => item.weight)),
-          totalTrackedWeight,
-        )
+      ? toShare(sum(topTrends.filter((item) => (item.changeVsPrevious ?? -Infinity) > 0).map((item) => item.weight)), totalTrackedWeight)
       : null;
 
   const benchmarkHistory = await fetchVnIndexSeries(365);
@@ -405,13 +393,13 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
 
   const holdingsExplanation: string[] = [];
   if (assetMix.length > 0) {
-    holdingsExplanation.push(`Danh muc hien tai tap trung nhieu nhat vao nhom ${assetMix[0].label.toLowerCase()}, chiem ${assetMix[0].share.toFixed(1)}% tong ty trong.`);
+    holdingsExplanation.push(`Danh mục hiện tại tập trung nhiều nhất vào nhóm ${assetMix[0].label.toLowerCase()}, chiếm ${assetMix[0].share.toFixed(1)}% tổng tỷ trọng.`);
   }
   if (positiveTrendWeight !== null) {
-    holdingsExplanation.push(`${positiveTrendWeight.toFixed(1)}% ty trong trong nhom co phieu nam giu lon dang co dien bien gia tich cuc trong 1 thang qua.`);
+    holdingsExplanation.push(`${positiveTrendWeight.toFixed(1)}% tỷ trọng trong nhóm cổ phiếu nắm giữ lớn đang có diễn biến giá tích cực trong 1 tháng qua.`);
   }
   if (increasedWeightShare !== null) {
-    holdingsExplanation.push(`${increasedWeightShare.toFixed(1)}% ty trong trong nhom nam giu lon da duoc nang them so voi ky cong bo truoc.`);
+    holdingsExplanation.push(`${increasedWeightShare.toFixed(1)}% tỷ trọng trong nhóm nắm giữ lớn đã được nâng thêm so với kỳ công bố trước.`);
   }
 
   const macroView = buildMacroView(formatCategory(fund.category), regime, details.sectorAllocation);
@@ -425,10 +413,7 @@ export async function buildAdvisorReport(dataset: FundDataset, fundCode: string)
     positiveTrendWeight,
   });
 
-  const dataFreshness =
-    metrics.latestDate === null
-      ? "Chua co du lieu moi"
-      : `${metrics.latestDate}${dataset.updatedAt ? ` · sync ${dataset.updatedAt.slice(0, 10)}` : ""}`;
+  const dataFreshness = metrics.latestDate === null ? "Chưa có dữ liệu mới" : `${metrics.latestDate}${dataset.updatedAt ? ` · đồng bộ ${dataset.updatedAt.slice(0, 10)}` : ""}`;
 
   return {
     fundCode: normalizedCode,

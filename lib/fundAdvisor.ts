@@ -146,17 +146,17 @@ function buildNarrative(raw: {
   const strengths: string[] = [];
   const cautions: string[] = [];
 
-  if ((raw.quarterlyChange ?? -Infinity) > 3) strengths.push("Dong luc NAV 1 quy dang tich cuc.");
-  if ((raw.annualizedVolatility ?? Infinity) < 12) strengths.push("Bien dong NAV dang duoc kiem soat kha tot.");
-  if ((raw.maxDrawdown ?? Infinity) < 8) strengths.push("Muc drawdown lich su thap hon mat bang chung.");
-  if ((raw.hhi ?? Infinity) < 0.12) strengths.push("Danh muc phan bo khong qua tap trung vao mot vai vi the.");
-  if ((raw.pointCount ?? 0) > 250) strengths.push("Chuoi NAV du day de danh gia chat luong quy.");
+  if ((raw.quarterlyChange ?? -Infinity) > 3) strengths.push("Động lực NAV trong 1 quý đang tích cực.");
+  if ((raw.annualizedVolatility ?? Infinity) < 12) strengths.push("Biến động NAV đang được kiểm soát khá tốt.");
+  if ((raw.maxDrawdown ?? Infinity) < 8) strengths.push("Mức drawdown lịch sử thấp hơn mặt bằng chung.");
+  if ((raw.hhi ?? Infinity) < 0.12) strengths.push("Danh mục phân bổ không quá tập trung vào một vài vị thế.");
+  if ((raw.pointCount ?? 0) > 250) strengths.push("Chuỗi NAV đủ dày để đánh giá chất lượng quỹ.");
 
-  if ((raw.navAgeDays ?? Infinity) > 5) cautions.push("NAV gan nhat dang cham cap nhat so voi hien tai.");
-  if ((raw.annualizedVolatility ?? 0) > 20) cautions.push("Bien dong cao, phu hop hon voi nha dau tu chap nhan rui ro.");
-  if ((raw.maxDrawdown ?? 0) > 15) cautions.push("Drawdown lich su tung xuong sau, can quan tri ty trong.");
-  if ((raw.hhi ?? 0) > 0.18) cautions.push("Danh muc hien tai co dau hieu tap trung cao.");
-  if ((raw.holdingCount ?? 0) < 10) cautions.push("So luong vi the cong bo chua nhieu, can doc ky danh muc.");
+  if ((raw.navAgeDays ?? Infinity) > 5) cautions.push("NAV gần nhất đang chậm cập nhật so với hiện tại.");
+  if ((raw.annualizedVolatility ?? 0) > 20) cautions.push("Biến động cao, phù hợp hơn với nhà đầu tư chấp nhận rủi ro.");
+  if ((raw.maxDrawdown ?? 0) > 15) cautions.push("Drawdown lịch sử từng xuống sâu, cần quản trị tỷ trọng.");
+  if ((raw.hhi ?? 0) > 0.18) cautions.push("Danh mục hiện tại có dấu hiệu tập trung cao.");
+  if ((raw.holdingCount ?? 0) < 10) cautions.push("Số lượng vị thế công bố chưa nhiều, cần đọc kỹ danh mục.");
 
   return { strengths: strengths.slice(0, 3), cautions: cautions.slice(0, 3) };
 }
