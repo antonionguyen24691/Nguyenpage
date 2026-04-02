@@ -172,7 +172,7 @@ export default function FundChart({
   return (
     <div
       ref={chartContainerRef}
-      className="h-[260px] w-full overflow-hidden rounded-[1.5rem] border border-white/70 bg-[rgba(255,255,255,0.7)] md:h-[340px] xl:h-[360px]"
+      className="h-[240px] w-full overflow-hidden rounded-[1.5rem] border border-white/70 bg-[rgba(255,255,255,0.7)] md:h-[300px] xl:h-[320px]"
     />
   );
 }

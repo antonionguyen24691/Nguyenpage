@@ -74,7 +74,7 @@ function formatAssetChange(value: number | null | undefined, assetType: Holding[
 export default function FundHoldingsPie({ data }: { data: Holding[] }) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex h-[320px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-6 text-sm text-on-surface-variant md:h-[420px]">
+      <div className="flex h-[240px] items-center justify-center rounded-[1.5rem] border border-dashed border-outline-variant/70 bg-surface-container-low px-6 text-sm text-on-surface-variant md:h-[320px]">
         Chưa có dữ liệu danh mục cho kỳ báo cáo đang chọn.
       </div>
     );
@@ -99,7 +99,7 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="relative mx-auto h-[260px] w-full max-w-[260px] sm:h-[280px] sm:max-w-[280px]">
+      <div className="relative mx-auto h-[220px] w-full max-w-[220px] sm:h-[240px] sm:max-w-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -139,7 +139,7 @@ export default function FundHoldingsPie({ data }: { data: Holding[] }) {
         <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
           Top tỷ trọng hiện tại
         </div>
-        <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+        <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
           {topData.map((item, index) => (
             <div
               key={item.stock_code}
