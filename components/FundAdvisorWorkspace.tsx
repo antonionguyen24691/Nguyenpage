@@ -9,6 +9,7 @@ type LiquidityNeed = "low" | "medium" | "high";
 type HorizonUnit = "month" | "year";
 type Profile = {
   riskTolerance: AdvisorRiskBand;
+  capital: number;
   horizon: number;
   horizonUnit: HorizonUnit;
   liquidityNeed: LiquidityNeed;
@@ -19,6 +20,7 @@ type MetricTone = "neutral" | "positive" | "negative";
 
 const defaultProfile: Profile = {
   riskTolerance: "medium",
+  capital: 300000000,
   horizon: 5,
   horizonUnit: "year",
   liquidityNeed: "medium",
@@ -92,6 +94,7 @@ const formatPercent = (value: number | null, signed = true) =>
   value === null || Number.isNaN(value) ? "Không có" : `${signed && value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 const formatNumber = (value: number | null, digits = 1) => (value === null || Number.isNaN(value) ? "Không có" : value.toFixed(digits));
 const formatNav = (value: number | null) => (value === null || Number.isNaN(value) ? "Không có" : value.toLocaleString("vi-VN"));
+const formatCurrency = (value: number | null) => (value === null || Number.isNaN(value) ? "Không có" : `${Math.round(value).toLocaleString("vi-VN")} VNĐ`);
 const formatRisk = (value: AdvisorRiskBand) => (value === "low" ? "Thận trọng" : value === "medium" ? "Cân bằng" : "Tăng trưởng");
 const formatCategory = (value: Profile["categoryFocus"] | AdvisorFund["category"]) =>
   value === "bond" ? "Quỹ trái phiếu" : value === "balanced" ? "Quỹ cân bằng" : value === "equity" ? "Quỹ cổ phiếu" : "Tất cả";
@@ -144,6 +147,7 @@ function buildAllocationPlan(recommendations: Array<{ fund: AdvisorFund; fitScor
     fund,
     fitScore,
     share: Number(((adjustedWeights[index] / total) * 100).toFixed(1)),
+    amount: Number((profile.capital * adjustedWeights[index] / total).toFixed(0)),
   }));
 }
 
@@ -216,7 +220,7 @@ function AllocationCard({ title, items }: { title: string; items: Array<{ label:
   );
 }
 
-function AllocationPlanCard({ items }: { items: Array<{ fund: AdvisorFund; fitScore: number; share: number }> }) {
+function AllocationPlanCard({ items, capital }: { items: Array<{ fund: AdvisorFund; fitScore: number; share: number; amount: number }>; capital: number }) {
   if (!items.length) {
     return (
       <div className="rounded-[1.6rem] border border-outline-variant/50 bg-surface-container-low p-4">
@@ -231,12 +235,15 @@ function AllocationPlanCard({ items }: { items: Array<{ fund: AdvisorFund; fitSc
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-bold uppercase tracking-[0.16em] text-primary">Phân bổ tỷ trọng gợi ý</div>
-          <div className="mt-2 text-sm leading-7 text-on-surface-variant">Tỷ trọng được suy ra từ mức độ phù hợp, khẩu vị rủi ro và thời gian đầu tư đang chọn.</div>
+          <div className="mt-2 text-sm leading-7 text-on-surface-variant">Tỷ trọng được suy ra từ mức độ phù hợp, khẩu vị rủi ro, thời gian đầu tư và tổng vốn hiện có.</div>
         </div>
-        <Badge>{items.length} quỹ</Badge>
+        <div className="text-right">
+          <Badge>{items.length} quỹ</Badge>
+          <div className="mt-2 text-xs font-semibold text-on-surface-variant">{formatCurrency(capital)}</div>
+        </div>
       </div>
       <div className="mt-4 space-y-3">
-        {items.map(({ fund, fitScore, share }) => (
+        {items.map(({ fund, fitScore, share, amount }) => (
           <div key={fund.code} className="rounded-[1.25rem] border border-outline-variant/40 bg-white px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -246,6 +253,7 @@ function AllocationPlanCard({ items }: { items: Array<{ fund: AdvisorFund; fitSc
               <div className="text-right">
                 <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">Tỷ trọng</div>
                 <div className="text-xl font-extrabold text-primary">{share.toFixed(1)}%</div>
+                <div className="mt-1 text-xs font-semibold text-on-surface-variant">{formatCurrency(amount)}</div>
               </div>
             </div>
             <div className="mt-3 h-2 rounded-full bg-surface-container">
@@ -500,6 +508,7 @@ export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }
             <div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Hồ sơ tư vấn</p><h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">Chọn khẩu vị đầu tư</h2></div>
             <div className="space-y-4">
               <Field label="Khẩu vị rủi ro"><select value={profile.riskTolerance} onChange={(event) => setProfile((current) => ({ ...current, riskTolerance: event.target.value as AdvisorRiskBand }))} className="w-full rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none"><option value="low">Thận trọng</option><option value="medium">Cân bằng</option><option value="high">Tăng trưởng</option></select></Field>
+              <Field label="Tổng số tiền đầu tư"><input type="number" min={1000000} step={1000000} value={profile.capital} onChange={(event) => setProfile((current) => ({ ...current, capital: Math.max(0, Number(event.target.value) || 0) }))} className="w-full rounded-2xl border border-outline-variant/70 bg-white px-4 py-3 text-sm font-semibold text-on-surface outline-none" /><div className="mt-2 text-sm font-semibold text-on-surface">{formatCurrency(profile.capital)}</div></Field>
               <Field label="Thời gian đầu tư">
                 <div className="mb-3 inline-flex rounded-full border border-outline-variant/70 bg-surface-container-low p-1">
                   <button
@@ -550,7 +559,7 @@ export default function FundAdvisorWorkspace({ funds }: { funds: AdvisorFund[] }
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Danh sách gợi ý</p>
             <div className="mt-4 space-y-3">{recommendations.map(({ fund, fitScore }, index) => <RecommendationCard key={fund.code} fund={fund} fitScore={fitScore} profile={profile} index={index} active={fund.code === highlightedFund?.code} onSelect={() => setSelectedCode(fund.code)} />)}</div>
             <div className="mt-5">
-              <AllocationPlanCard items={allocationPlan} />
+              <AllocationPlanCard items={allocationPlan} capital={profile.capital} />
             </div>
           </section>
         </aside>
