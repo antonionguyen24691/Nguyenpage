@@ -18,6 +18,7 @@ const defaultLinks: NavLink[] = [
   { id: 3, label: "Advisor", url: "/advisor", order: 3, visible: true },
   { id: 4, label: "Ho tro", url: "/dang-ky", order: 4, visible: true },
   { id: 5, label: "Thong tin quy", url: "/fund-intelligence", order: 5, visible: true },
+  { id: 6, label: "Stock", url: "/stock", order: 6, visible: true },
 ];
 
 const advisorLink = defaultLinks.find((link) => link.url === "/advisor")!;

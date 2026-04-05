@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import HomeEditor from "@/components/HomeEditor";
 import {
@@ -133,9 +133,66 @@ export default function AdminDashboard() {
   // Manage Modals
   const [isPageModalOpen, setIsPageModalOpen] = useState(false);
   
-  const handleSyncFunds = async () => {
+  const syncPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopSyncPolling = () => {
+    if (syncPollRef.current) {
+      clearInterval(syncPollRef.current);
+      syncPollRef.current = null;
+    }
+  };
+
+  const pollSyncStatus = async () => {
     try {
-      if (!confirm("Tiến trình đồng bộ sẽ quét tất cả các Quỹ, việc này mất một ít thời gian. Bạn có chắc chắn bắt đầu không?")) return;
+      const adminToken = sessionStorage.getItem("admin_token");
+      const res = await fetch("/api/admin/fund-sync/status", {
+        headers: {
+          "x-admin-token": adminToken || "",
+        },
+      });
+      const data = await res.json();
+      const job = data?.job;
+      if (!job) return;
+
+      if (job.status === "running") {
+        setSyncMessage("Đang đồng bộ... vui lòng chờ.");
+        return;
+      }
+
+      stopSyncPolling();
+      setIsSyncing(false);
+
+      if (job.status === "success") {
+        const navCount = job.data?.nav?.successCount ?? 0;
+        const holdingsCount = Array.isArray(job.data?.holdings)
+          ? job.data.holdings.filter((item: { success?: boolean }) => item.success).length
+          : 0;
+        const doneMessage =
+          job.mode === "nav"
+            ? `Đồng bộ NAV hoàn tất. NAV: ${navCount} bản ghi.`
+            : `Đồng bộ danh mục quỹ hoàn tất. Holdings: ${holdingsCount} quỹ xử lý thành công.`;
+        setSyncMessage(doneMessage);
+        alert(doneMessage);
+        return;
+      }
+
+      if (job.status === "error") {
+        const errorMessage = `Có lỗi: ${job.error || "Không xác định"}`;
+        setSyncMessage(errorMessage);
+        alert(errorMessage);
+      }
+    } catch {
+      // Avoid spamming alerts while polling.
+    }
+  };
+
+  const handleSyncFunds = async (mode: "nav" | "holdings") => {
+    try {
+      const confirmMessage =
+        mode === "nav"
+          ? "Đồng bộ NAV sẽ quét dữ liệu NAV cho tất cả quỹ. Bắt đầu chứ?"
+          : "Đồng bộ danh mục quỹ (holdings) có thể lâu hơn và dễ timeout. Bạn có chắc muốn bắt đầu?";
+      if (!confirm(confirmMessage)) return;
       setIsSyncing(true);
       setSyncMessage("");
       const adminToken = sessionStorage.getItem("admin_token");
@@ -145,27 +202,25 @@ export default function AdminDashboard() {
           "Content-Type": "application/json",
           "x-admin-token": adminToken || "",
         },
-        body: JSON.stringify({ mode: "all" }),
+        body: JSON.stringify({ mode }),
       });
       const data = await res.json();
       if (data.success) {
-        const navCount = data.data?.nav?.successCount ?? 0;
-        const holdingsCount = Array.isArray(data.data?.holdings)
-          ? data.data.holdings.filter((item: { success?: boolean }) => item.success).length
-          : 0;
-        const message = `Đồng bộ hoàn tất. NAV: ${navCount} bản ghi, holdings: ${holdingsCount} quỹ xử lý thành công.`;
-        setSyncMessage(message);
-        alert(message);
+        setSyncMessage("Đã bắt đầu đồng bộ. Đang chạy nền...");
+        stopSyncPolling();
+        syncPollRef.current = setInterval(pollSyncStatus, 4000);
       } else {
         const message = "Có lỗi: " + (data.message || data.error || "Không xác định");
         setSyncMessage(message);
         alert(message);
+        setIsSyncing(false);
       }
     } catch {
       setSyncMessage("Lỗi kết nối khi đồng bộ.");
       alert("Lỗi kết nối khi đồng bộ!");
-    } finally {
       setIsSyncing(false);
+    } finally {
+      // Let polling stop the loading state when job finishes.
     }
   };
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
@@ -241,6 +296,12 @@ export default function AdminDashboard() {
   const toggleLinkVisibility = (id: number | string) => {
     setLinks(links.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
   };
+
+  useEffect(() => {
+    return () => {
+      stopSyncPolling();
+    };
+  }, []);
 
   if (!authChecked) return null;
 
@@ -548,9 +609,9 @@ export default function AdminDashboard() {
                     </p>
                   ) : null}
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   <button 
-                    onClick={handleSyncFunds}
+                    onClick={() => handleSyncFunds("nav")}
                     disabled={isSyncing}
                     className="bg-indigo-600 text-white px-6 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-md active:scale-95 disabled:opacity-50"
                   >
@@ -559,7 +620,15 @@ export default function AdminDashboard() {
                     ) : (
                       <span className="material-symbols-outlined text-[20px]">sync</span>
                     )}
-                    {isSyncing ? 'Đang chạy...' : 'Crawl NAV & Danh mục quỹ'}
+                    {isSyncing ? "Đang chạy..." : "Crawl NAV"}
+                  </button>
+                  <button 
+                    onClick={() => handleSyncFunds("holdings")}
+                    disabled={isSyncing}
+                    className="bg-emerald-600 text-white px-6 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-md active:scale-95 disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">folder_data</span>
+                    Crawl Danh mục quỹ
                   </button>
                   <button 
                     onClick={() => alert("Đã lưu cấu hình hệ thống thành công!")}

@@ -90,6 +90,9 @@ export default function RootLayout({
               <Link className="block text-sm text-on-surface hover:text-primary" href="/fund-intelligence">
                 Thong tin quy
               </Link>
+              <Link className="block text-sm text-on-surface hover:text-primary" href="/stock">
+                Stock dashboard
+              </Link>
             </div>
 
             <div className="space-y-3">
@@ -107,6 +110,9 @@ export default function RootLayout({
               </Link>
               <Link className="block text-sm text-on-surface hover:text-primary" href="/fund-intelligence">
                 Phan tich quy
+              </Link>
+              <Link className="block text-sm text-on-surface hover:text-primary" href="/stock">
+                Theo doi stock
               </Link>
             </div>
 

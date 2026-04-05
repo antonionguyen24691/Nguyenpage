@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertCronAuthorized } from "@/lib/cronAuth";
-import { syncFunds } from "../../../../packages/fund-engine";
+import { enqueueJob } from "@/lib/qstash";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +11,10 @@ export async function GET(request: Request) {
       return unauthorized;
     }
 
-    const result = await syncFunds();
-
     return NextResponse.json({
       success: true,
-      message: "Dong bo du lieu quy hoan tat",
-      data: result,
+      message: "Queued fund sync job",
+      data: await enqueueJob("/api/queue/fund-sync", { mode: "nav" }),
     });
   } catch (error: unknown) {
     return NextResponse.json(

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertCronAuthorized } from "@/lib/cronAuth";
-import { syncAllHoldings } from "../../../../packages/fund-engine/pdf-extractor";
+import { enqueueJob } from "@/lib/qstash";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +11,10 @@ export async function GET(request: Request) {
       return unauthorized;
     }
 
-    const result = await syncAllHoldings();
-
     return NextResponse.json({
       success: true,
-      message: "Dong bo bao cao danh muc quy hoan tat",
-      data: result,
+      message: "Queued fund holdings job",
+      data: await enqueueJob("/api/queue/fund-sync", { mode: "holdings" }),
     });
   } catch (error: unknown) {
     return NextResponse.json(
