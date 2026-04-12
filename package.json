@@ -4,8 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:16gb": "powershell -ExecutionPolicy Bypass -File ./scripts/run-npm-with-node-memory-limit.ps1 dev 16384",
     "build": "next build",
+    "build:16gb": "powershell -ExecutionPolicy Bypass -File ./scripts/run-npm-with-node-memory-limit.ps1 build 16384",
     "start": "next start",
+    "start:16gb": "powershell -ExecutionPolicy Bypass -File ./scripts/run-npm-with-node-memory-limit.ps1 start 16384",
     "lint": "eslint",
     "sync:supabase": "node scripts/sync-local-data-to-supabase.mjs"
   },

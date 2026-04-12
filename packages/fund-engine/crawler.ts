@@ -26,6 +26,7 @@ const DEFAULT_HEADERS = {
   "Accept-Language": "vi,en-US;q=0.9,en;q=0.8",
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 };
+const DEFAULT_CRAWL_CONCURRENCY = 3;
 const PDF_WORKER_URL = pathToFileURL(
   path.join(process.cwd(), "node_modules", "pdf-parse", "dist", "pdf-parse", "web", "pdf.worker.min.mjs"),
 ).href;
@@ -736,17 +737,31 @@ async function fetchFmarketNav(entry: FundCatalogEntry): Promise<FundData[]> {
   }
 }
 
+function getCrawlConcurrency() {
+  const configured = Number(process.env.FUND_CRAWL_CONCURRENCY ?? DEFAULT_CRAWL_CONCURRENCY);
+  if (!Number.isFinite(configured)) {
+    return DEFAULT_CRAWL_CONCURRENCY;
+  }
+
+  return Math.max(1, Math.min(fundCatalog.length, Math.trunc(configured)));
+}
+
+async function crawlFundEntry(entry: FundCatalogEntry): Promise<FundData[]> {
+  const [fmarketRows, officialRows] = await Promise.all([
+    fetchFmarketNav(entry),
+    fetchOfficialNav(entry),
+  ]);
+
+  return [...fmarketRows, ...officialRows];
+}
+
 export async function crawlVinaCapital(fundName: string): Promise<FundData[]> {
   const entry = getFundCatalogEntry(fundName);
   if (!entry || entry.company !== "VinaCapital") {
     return [];
   }
 
-  const [fmarketRows, officialRows] = await Promise.all([
-    fetchFmarketNav(entry),
-    fetchOfficialNav(entry),
-  ]);
-  return [...fmarketRows, ...officialRows];
+  return crawlFundEntry(entry);
 }
 
 export async function crawlDragonCapital(fundName: string): Promise<FundData[]> {
@@ -755,11 +770,7 @@ export async function crawlDragonCapital(fundName: string): Promise<FundData[]> 
     return [];
   }
 
-  const [fmarketRows, officialRows] = await Promise.all([
-    fetchFmarketNav(entry),
-    fetchOfficialNav(entry),
-  ]);
-  return [...fmarketRows, ...officialRows];
+  return crawlFundEntry(entry);
 }
 
 export async function crawlSSIAM(fundName: string): Promise<FundData[]> {
@@ -768,23 +779,29 @@ export async function crawlSSIAM(fundName: string): Promise<FundData[]> {
     return [];
   }
 
-  const [fmarketRows, officialRows] = await Promise.all([
-    fetchFmarketNav(entry),
-    fetchOfficialNav(entry),
-  ]);
-  return [...fmarketRows, ...officialRows];
+  return crawlFundEntry(entry);
 }
 
 export async function crawlAllFunds(): Promise<FundData[]> {
-  const groups = await Promise.all(
-    fundCatalog.map(async (entry) => {
-      const [fmarketRows, officialRows] = await Promise.all([
-        fetchFmarketNav(entry),
-        fetchOfficialNav(entry),
-      ]);
-      return [...fmarketRows, ...officialRows];
+  const groups: FundData[][] = new Array(fundCatalog.length);
+  const concurrency = getCrawlConcurrency();
+  let nextIndex = 0;
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, fundCatalog.length) }, async () => {
+      while (true) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+
+        if (currentIndex >= fundCatalog.length) {
+          return;
+        }
+
+        groups[currentIndex] = await crawlFundEntry(fundCatalog[currentIndex]);
+      }
     }),
   );
+
   const unique = new Map<string, FundData>();
 
   for (const rows of groups) {

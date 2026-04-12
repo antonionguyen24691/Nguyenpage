@@ -1,36 +1,13 @@
 import { NextResponse } from "next/server";
 import { assertAdminAuthorized } from "@/lib/adminAuth";
-import { syncFunds } from "@/packages/fund-engine";
-import { syncAllHoldings } from "@/packages/fund-engine/pdf-extractor";
+import {
+  getFundSyncJobState,
+  saveFundSyncJobState,
+  type SyncMode,
+} from "@/lib/fundSyncState";
+import { enqueueJob } from "@/lib/qstash";
 
 export const dynamic = "force-dynamic";
-
-type SyncMode = "nav" | "holdings" | "all";
-
-type JobStatus = "idle" | "running" | "success" | "error";
-
-type JobState = {
-  status: JobStatus;
-  mode: SyncMode | null;
-  startedAt: string | null;
-  finishedAt: string | null;
-  error?: string;
-  data?: {
-    nav?: Awaited<ReturnType<typeof syncFunds>>;
-    holdings?: Awaited<ReturnType<typeof syncAllHoldings>>;
-  };
-};
-
-let jobState: JobState = {
-  status: "idle",
-  mode: null,
-  startedAt: null,
-  finishedAt: null,
-};
-
-export function getJobState() {
-  return jobState;
-}
 
 export async function POST(request: Request) {
   const unauthorized = assertAdminAuthorized(request);
@@ -41,71 +18,61 @@ export async function POST(request: Request) {
   try {
     const payload = (await request.json().catch(() => ({}))) as { mode?: SyncMode };
     const mode = payload.mode ?? "all";
+    const currentJob = await getFundSyncJobState();
 
-    if (jobState.status === "running") {
+    if (currentJob.status === "queued" || currentJob.status === "running") {
       return NextResponse.json(
         {
           success: false,
           error: "A sync job is already running.",
-          job: jobState,
+          job: currentJob,
         },
         { status: 409 },
       );
     }
 
-    jobState = {
-      status: "running",
+    const startedAt = new Date().toISOString();
+    const nextJobState = {
+      status: "running" as const,
       mode,
-      startedAt: new Date().toISOString(),
+      startedAt,
       finishedAt: null,
     };
 
-    void (async () => {
-      try {
-        const result: {
-          nav?: Awaited<ReturnType<typeof syncFunds>>;
-          holdings?: Awaited<ReturnType<typeof syncAllHoldings>>;
-        } = {};
+    await saveFundSyncJobState(nextJobState);
 
-        if (mode === "nav" || mode === "all") {
-          result.nav = await syncFunds();
-        }
-
-        if (mode === "holdings" || mode === "all") {
-          result.holdings = await syncAllHoldings();
-        }
-
-        jobState = {
-          status: "success",
-          mode,
-          startedAt: jobState.startedAt,
-          finishedAt: new Date().toISOString(),
-          data: result,
-        };
-      } catch (error: unknown) {
-        jobState = {
-          status: "error",
-          mode,
-          startedAt: jobState.startedAt,
-          finishedAt: new Date().toISOString(),
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
-    })();
+    const baseUrl = new URL(request.url).origin;
+    const queueResult = await enqueueJob(
+      "/api/queue/fund-sync",
+      { mode, requestedAt: startedAt, initiatedBy: "admin" },
+      { baseUrl },
+    );
 
     return NextResponse.json(
       {
         success: true,
         mode,
-        job: jobState,
+        job: nextJobState,
+        data: queueResult,
       },
       { status: 202 },
     );
   } catch (error: unknown) {
+    const failedJobState = {
+      status: "error" as const,
+      mode: null,
+      startedAt: null,
+      finishedAt: new Date().toISOString(),
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+
+    await saveFundSyncJobState(failedJobState);
+
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: failedJobState.error,
+        job: failedJobState,
       },
       { status: 500 },
     );

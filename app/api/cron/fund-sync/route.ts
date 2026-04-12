@@ -14,7 +14,11 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       message: "Queued fund sync job",
-      data: await enqueueJob("/api/queue/fund-sync", { mode: "nav" }),
+      data: await enqueueJob(
+        "/api/queue/fund-sync",
+        { mode: "nav", initiatedBy: "cron" },
+        { baseUrl: new URL(request.url).origin },
+      ),
     });
   } catch (error: unknown) {
     return NextResponse.json(

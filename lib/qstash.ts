@@ -1,6 +1,10 @@
 const QSTASH_PUBLISH_URL = "https://qstash.upstash.io/v2/publish";
 
-function getBaseUrl() {
+function getBaseUrl(baseUrlOverride?: string) {
+  if (baseUrlOverride) {
+    return baseUrlOverride.replace(/\/$/, "");
+  }
+
   const explicit =
     process.env.APP_BASE_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -17,13 +21,17 @@ function getBaseUrl() {
   return null;
 }
 
-export async function enqueueJob(path: string, payload: unknown) {
+export async function enqueueJob(
+  path: string,
+  payload: unknown,
+  options?: { baseUrl?: string },
+) {
   const token = process.env.QSTASH_TOKEN;
   if (!token) {
     throw new Error("QSTASH_TOKEN is not configured");
   }
 
-  const baseUrl = getBaseUrl();
+  const baseUrl = getBaseUrl(options?.baseUrl);
   if (!baseUrl) {
     throw new Error("APP_BASE_URL is not configured");
   }

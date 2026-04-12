@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertAdminAuthorized } from "@/lib/adminAuth";
-import { getJobState } from "../route";
+import { getFundSyncJobState } from "@/lib/fundSyncState";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,6 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     success: true,
-    job: getJobState(),
+    job: await getFundSyncJobState(),
   });
 }

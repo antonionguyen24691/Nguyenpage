@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import * as cheerio from "cheerio";
 import { fundCatalog } from "@/lib/fundCatalog";
 import { persistFundData } from "@/lib/fundDataStore";
+import { getProcessedHoldingPeriods, markHoldingPeriodProcessed } from "@/lib/fundSyncState";
 import { extractHoldingsFromText } from "../ai/holdings-extraction";
 
 type HoldingRow = {
@@ -20,6 +21,17 @@ type HoldingsSyncResult = {
   holdings_extracted: number;
   note?: string;
   error?: string;
+};
+
+type ProcessedHoldingDocument = {
+  reportDate: string;
+  sourceUrl: string;
+  holdingsExtracted: number;
+};
+
+type HoldingsCollectorResult = HoldingsSyncResult & {
+  rows: HoldingRow[];
+  processedDocuments: ProcessedHoldingDocument[];
 };
 
 const SSIAM_PAGES: Record<string, string> = {
@@ -209,7 +221,10 @@ async function extractHoldingsFromPdfUrl(fundCode: string, pdfUrl: string, repor
     .filter((item: HoldingRow) => item.stock_code && Number.isFinite(item.weight));
 }
 
-async function collectSSIAMHoldings(fundCode: string): Promise<HoldingsSyncResult & { rows: HoldingRow[] }> {
+async function collectSSIAMHoldings(
+  fundCode: string,
+  processedPeriods: Set<string>,
+): Promise<HoldingsCollectorResult> {
   const pageUrl = SSIAM_PAGES[fundCode];
   if (!pageUrl) {
     return {
@@ -220,6 +235,7 @@ async function collectSSIAMHoldings(fundCode: string): Promise<HoldingsSyncResul
       holdings_extracted: 0,
       error: "No official SSIAM page mapping",
       rows: [],
+      processedDocuments: [],
     };
   }
 
@@ -228,10 +244,11 @@ async function collectSSIAMHoldings(fundCode: string): Promise<HoldingsSyncResul
   const rows: HoldingRow[] = [];
   const periods = new Set<string>();
   const notes: string[] = [];
+  const processedDocuments: ProcessedHoldingDocument[] = [];
 
   const holdingsDateText = $(".assetDistribution__content__note").first().text().trim();
   const currentDate = parseMonthDate(holdingsDateText);
-  if (currentDate) {
+  if (currentDate && !processedPeriods.has(currentDate)) {
     $(".assetDistribution_table table tbody tr").each((_, element) => {
       const cells = $(element)
         .find("td")
@@ -251,6 +268,14 @@ async function collectSSIAMHoldings(fundCode: string): Promise<HoldingsSyncResul
         }
       }
     });
+
+    if (rows.some((row) => row.date === currentDate)) {
+      processedDocuments.push({
+        reportDate: currentDate,
+        sourceUrl: `${pageUrl}#current-holdings`,
+        holdingsExtracted: rows.filter((row) => row.date === currentDate).length,
+      });
+    }
   }
 
   const documentLinks = $(".formDocument__document_item")
@@ -265,7 +290,7 @@ async function collectSSIAMHoldings(fundCode: string): Promise<HoldingsSyncResul
 
   for (const document of documentLinks) {
     const reportDate = parseMonthDate(document.title);
-    if (!document.href || !reportDate || periods.has(reportDate)) {
+    if (!document.href || !reportDate || periods.has(reportDate) || processedPeriods.has(reportDate)) {
       continue;
     }
     try {
@@ -276,6 +301,13 @@ async function collectSSIAMHoldings(fundCode: string): Promise<HoldingsSyncResul
       );
       pdfRows.forEach((row: HoldingRow) => rows.push(row));
       periods.add(reportDate);
+      if (pdfRows.length > 0) {
+        processedDocuments.push({
+          reportDate,
+          sourceUrl: absoluteUrl(document.href, pageUrl),
+          holdingsExtracted: pdfRows.length,
+        });
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown PDF extraction error";
       notes.push(`${reportDate}: ${message}`);
@@ -290,6 +322,7 @@ async function collectSSIAMHoldings(fundCode: string): Promise<HoldingsSyncResul
     holdings_extracted: rows.length,
     note: notes.length > 0 ? notes.join(" | ") : undefined,
     rows: dedupeHoldings(rows),
+    processedDocuments,
   };
 }
 
@@ -347,7 +380,10 @@ function extractDragonPdfUrl(html: string) {
   return match?.[0] ?? null;
 }
 
-async function collectDragonHoldings(fundCode: string): Promise<HoldingsSyncResult & { rows: HoldingRow[] }> {
+async function collectDragonHoldings(
+  fundCode: string,
+  processedPeriods: Set<string>,
+): Promise<HoldingsCollectorResult> {
   const sitemap = await fetchHtml("https://dautu.dragoncapital.com.vn/sitemap.xml");
   const urls = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)]
     .map((match) => match[1])
@@ -371,19 +407,27 @@ async function collectDragonHoldings(fundCode: string): Promise<HoldingsSyncResu
 
   const rows: HoldingRow[] = [];
   const periods = new Set<string>();
+  const processedDocuments: ProcessedHoldingDocument[] = [];
 
   for (const url of urls) {
+    const hintedReportDate = parseDragonArticleDate(url, "");
+    if (hintedReportDate && processedPeriods.has(hintedReportDate)) {
+      continue;
+    }
+
     const html = await fetchHtml(url);
     const reportDate = parseDragonArticleDate(url, html);
-    if (!reportDate || periods.has(reportDate)) {
+    if (!reportDate || periods.has(reportDate) || processedPeriods.has(reportDate)) {
       continue;
     }
     let articleRows = parseDragonHoldingsTable(fundCode, html, reportDate);
+    let sourceUrl = url;
     if (articleRows.length === 0) {
       const pdfUrl = extractDragonPdfUrl(html);
       if (pdfUrl) {
         try {
           articleRows = await extractHoldingsFromPdfUrl(fundCode, pdfUrl, reportDate);
+          sourceUrl = pdfUrl;
         } catch {
           articleRows = [];
         }
@@ -392,6 +436,11 @@ async function collectDragonHoldings(fundCode: string): Promise<HoldingsSyncResu
     if (articleRows.length > 0) {
       articleRows.forEach((row) => rows.push(row));
       periods.add(reportDate);
+      processedDocuments.push({
+        reportDate,
+        sourceUrl,
+        holdingsExtracted: articleRows.length,
+      });
     }
     if (periods.size >= MAX_HISTORICAL_PERIODS) {
       break;
@@ -405,16 +454,24 @@ async function collectDragonHoldings(fundCode: string): Promise<HoldingsSyncResu
     source: "Dragon Capital sitemap + article holdings tables",
     holdings_extracted: rows.length,
     rows: dedupeHoldings(rows),
+    processedDocuments,
   };
 }
 
-async function collectVinaHoldings(fundCode: string): Promise<HoldingsSyncResult & { rows: HoldingRow[] }> {
+async function collectVinaHoldings(
+  fundCode: string,
+  processedPeriods: Set<string>,
+): Promise<HoldingsCollectorResult> {
   const rows: HoldingRow[] = [];
   const periods = new Set<string>();
   const notes: string[] = [];
+  const processedDocuments: ProcessedHoldingDocument[] = [];
 
   for (const reportMonth of getRecentReportMonths()) {
     const reportDate = monthStart(reportMonth);
+    if (processedPeriods.has(reportDate)) {
+      continue;
+    }
     const pdfUrl = await resolveReachableUrl(buildVinaFactsheetCandidates(fundCode, reportMonth));
 
     if (!pdfUrl) {
@@ -427,6 +484,11 @@ async function collectVinaHoldings(fundCode: string): Promise<HoldingsSyncResult
       if (pdfRows.length > 0) {
         pdfRows.forEach((row: HoldingRow) => rows.push(row));
         periods.add(reportDate);
+        processedDocuments.push({
+          reportDate,
+          sourceUrl: pdfUrl,
+          holdingsExtracted: pdfRows.length,
+        });
       } else {
         notes.push(`${reportDate}: no holdings extracted`);
       }
@@ -444,13 +506,17 @@ async function collectVinaHoldings(fundCode: string): Promise<HoldingsSyncResult
     holdings_extracted: rows.length,
     note: notes.length > 0 ? notes.join(" | ") : undefined,
     rows: dedupeHoldings(rows),
+    processedDocuments,
   };
 }
 
-export async function processFundHoldings(fundCode: string) {
+export async function processFundHoldings(
+  fundCode: string,
+  processedPeriods: Set<string> = new Set(),
+) {
   try {
     if (SSIAM_PAGES[fundCode]) {
-      const result = await collectSSIAMHoldings(fundCode);
+      const result = await collectSSIAMHoldings(fundCode, processedPeriods);
       if (result.rows.length > 0) {
         await persistFundData({
           funds: fundCatalog.map((entry) => ({
@@ -460,12 +526,22 @@ export async function processFundHoldings(fundCode: string) {
           })),
           holdings: result.rows,
         });
+
+        for (const document of result.processedDocuments) {
+          await markHoldingPeriodProcessed({
+            fundCode,
+            reportDate: document.reportDate,
+            sourceUrl: document.sourceUrl,
+            holdingsExtracted: document.holdingsExtracted,
+          });
+          processedPeriods.add(document.reportDate);
+        }
       }
       return result;
     }
 
     if (DRAGON_CODES.has(fundCode)) {
-      const result = await collectDragonHoldings(fundCode);
+      const result = await collectDragonHoldings(fundCode, processedPeriods);
       if (result.rows.length > 0) {
         await persistFundData({
           funds: fundCatalog.map((entry) => ({
@@ -475,12 +551,22 @@ export async function processFundHoldings(fundCode: string) {
           })),
           holdings: result.rows,
         });
+
+        for (const document of result.processedDocuments) {
+          await markHoldingPeriodProcessed({
+            fundCode,
+            reportDate: document.reportDate,
+            sourceUrl: document.sourceUrl,
+            holdingsExtracted: document.holdingsExtracted,
+          });
+          processedPeriods.add(document.reportDate);
+        }
       }
       return result;
     }
 
     if (VINA_CODES.has(fundCode)) {
-      const result = await collectVinaHoldings(fundCode);
+      const result = await collectVinaHoldings(fundCode, processedPeriods);
       if (result.rows.length > 0) {
         await persistFundData({
           funds: fundCatalog.map((entry) => ({
@@ -490,6 +576,16 @@ export async function processFundHoldings(fundCode: string) {
           })),
           holdings: result.rows,
         });
+
+        for (const document of result.processedDocuments) {
+          await markHoldingPeriodProcessed({
+            fundCode,
+            reportDate: document.reportDate,
+            sourceUrl: document.sourceUrl,
+            holdingsExtracted: document.holdingsExtracted,
+          });
+          processedPeriods.add(document.reportDate);
+        }
       }
       return result;
     }
@@ -502,6 +598,7 @@ export async function processFundHoldings(fundCode: string) {
       holdings_extracted: 0,
       error: "No collector configured",
       rows: [],
+      processedDocuments: [],
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -513,6 +610,7 @@ export async function processFundHoldings(fundCode: string) {
       holdings_extracted: 0,
       error: message,
       rows: [],
+      processedDocuments: [],
     };
   }
 }
@@ -521,10 +619,11 @@ export async function syncAllHoldings() {
   const targets = fundCatalog
     .map((entry) => entry.code)
     .filter((code) => SSIAM_PAGES[code] || DRAGON_CODES.has(code) || VINA_CODES.has(code));
+  const processedPeriodMap = await getProcessedHoldingPeriods(targets);
 
   const results = [];
   for (const code of targets) {
-    results.push(await processFundHoldings(code));
+    results.push(await processFundHoldings(code, processedPeriodMap.get(code) ?? new Set()));
   }
   return results;
 }
