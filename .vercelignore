@@ -1,0 +1,7 @@
+scripts/requirements.txt
+scripts/*.py
+scripts/stock_worker
+dev.log
+dev.err
+dev-oomfix.log
+dev-oomfix.err
