@@ -58,7 +58,18 @@ export async function getFundSyncJobState() {
 }
 
 export async function saveFundSyncJobState(jobState: FundSyncJobState) {
-  return saveConfigValue(FUND_SYNC_JOB_STATE_KEY, jobState);
+  try {
+    return await saveConfigValue(FUND_SYNC_JOB_STATE_KEY, jobState);
+  } catch (error) {
+    console.warn("Unable to persist fund sync job state", error);
+    return {
+      persistedToDatabase: false,
+      persistedToLocalFile: false,
+      databaseError: error instanceof Error ? error.message : "Unknown error",
+      localFileError: null,
+      localPath: null,
+    };
+  }
 }
 
 export async function getFundHoldingsCrawlHistory() {
@@ -125,5 +136,16 @@ export async function markHoldingPeriodProcessed(input: {
     },
   });
 
-  return saveConfigValue(FUND_HOLDINGS_CRAWL_HISTORY_KEY, nextHistory);
+  try {
+    return await saveConfigValue(FUND_HOLDINGS_CRAWL_HISTORY_KEY, nextHistory);
+  } catch (error) {
+    console.warn("Unable to persist fund holdings crawl history", error);
+    return {
+      persistedToDatabase: false,
+      persistedToLocalFile: false,
+      databaseError: error instanceof Error ? error.message : "Unknown error",
+      localFileError: null,
+      localPath: null,
+    };
+  }
 }
