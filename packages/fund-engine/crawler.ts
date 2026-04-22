@@ -835,7 +835,7 @@ async function fetchFmarketSpotNavFromDom(entry: FundCatalogEntry): Promise<Fund
     const html = await response.text();
     const $ = cheerio.load(html);
     const navSection = $(".fund__nav").first();
-    const nav = parseLocalizedNav(
+    const domNav = parseLocalizedNav(
       navSection
         .find(".nav")
         .first()
@@ -844,12 +844,20 @@ async function fetchFmarketSpotNavFromDom(entry: FundCatalogEntry): Promise<Fund
         .replace(/VND/gi, "")
         .trim(),
     );
-    const date = normalizeSlashDate(
+    const domDate = normalizeSlashDate(
       navSection
         .text()
         .replace(/\s+/g, " ")
         .match(/(\d{1,2}\/\d{1,2}\/\d{4})/)?.[1] ?? "",
     );
+    const rawNav = parseLocalizedNav(
+      html.match(/class="nav">([\d,.\s]+)\s*VND<\/span>/i)?.[1] ?? "",
+    );
+    const rawDate = normalizeSlashDate(
+      html.match(/(\d{1,2}\/\d{1,2}\/\d{4})/)?.[1] ?? "",
+    );
+    const nav = domNav ?? rawNav;
+    const date = domDate ?? rawDate;
 
     if (!date || nav === null) {
       return [];
