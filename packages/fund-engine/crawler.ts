@@ -693,7 +693,7 @@ async function fetchFmarketSpotNav(entry: FundCatalogEntry): Promise<FundData[]>
 
 async function fetchFmarketNav(entry: FundCatalogEntry): Promise<FundData[]> {
   const productId = await resolveFmarketProductId(entry);
-  const spotRowsPromise = fetchFmarketSpotNav(entry);
+  const spotRowsPromise = fetchFmarketSpotNavFromDom(entry);
   if (!productId) {
     return spotRowsPromise;
   }
@@ -813,4 +813,58 @@ export async function crawlAllFunds(): Promise<FundData[]> {
   return [...unique.values()].sort(
     (left, right) => new Date(left.date).getTime() - new Date(right.date).getTime(),
   );
+}
+
+async function fetchFmarketSpotNavFromDom(entry: FundCatalogEntry): Promise<FundData[]> {
+  if (!entry.slug) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(`https://fmarket.vn/quy/${entry.slug}`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const navSection = $(".fund__nav").first();
+    const nav = parseLocalizedNav(
+      navSection
+        .find(".nav")
+        .first()
+        .text()
+        .replace(/\s+/g, " ")
+        .replace(/VND/gi, "")
+        .trim(),
+    );
+    const date = normalizeSlashDate(
+      navSection
+        .text()
+        .replace(/\s+/g, " ")
+        .match(/(\d{1,2}\/\d{1,2}\/\d{4})/)?.[1] ?? "",
+    );
+
+    if (!date || nav === null) {
+      return [];
+    }
+
+    return [
+      {
+        fund: entry.code,
+        nav,
+        date,
+        source: `${entry.company} via Fmarket page`,
+      },
+    ];
+  } catch (error) {
+    console.error(`Error crawling Fmarket spot NAV from DOM for ${entry.code}:`, error);
+    return [];
+  }
 }
