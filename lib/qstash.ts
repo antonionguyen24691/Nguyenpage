@@ -1,4 +1,4 @@
-const QSTASH_PUBLISH_URL = "https://qstash.upstash.io/v2/publish";
+const DEFAULT_QSTASH_PUBLISH_URL = "https://qstash.upstash.io/v2/publish";
 
 function getBaseUrl(baseUrlOverride?: string) {
   if (baseUrlOverride) {
@@ -37,6 +37,9 @@ export async function enqueueJob(
   }
 
   const targetUrl = `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+  const publishBaseUrl = (process.env.QSTASH_URL || DEFAULT_QSTASH_PUBLISH_URL)
+    .replace(/\/$/, "")
+    .replace(/\/v2\/publish$/i, "");
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
@@ -49,7 +52,7 @@ export async function enqueueJob(
   }
 
   const response = await fetch(
-    `${QSTASH_PUBLISH_URL}/${encodeURIComponent(targetUrl)}`,
+    `${publishBaseUrl}/v2/publish/${targetUrl}`,
     {
       method: "POST",
       headers,
