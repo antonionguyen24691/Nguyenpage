@@ -19,6 +19,7 @@ type FundDataset = {
 };
 
 const localFundDataPath = path.join(process.cwd(), "data", "fund-intelligence.json");
+const DATABASE_PAGE_SIZE = 1000;
 
 const emptyDataset: FundDataset = {
   funds: fundCatalog.map((entry) => ({
@@ -110,17 +111,83 @@ function mergeDatasets(...datasets: FundDataset[]): FundDataset {
   };
 }
 
+async function readAllFundNavRows() {
+  const rows: FundNavRecord[] = [];
+
+  for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+    const to = from + DATABASE_PAGE_SIZE - 1;
+    const { data, error } = await db
+      .from("fund_nav")
+      .select("fund_code, nav, date, source")
+      .order("date")
+      .range(from, to);
+
+    if (error) {
+      throw error;
+    }
+
+    const chunk =
+      data?.map((item) => ({
+        fund_code: item.fund_code,
+        nav: Number(item.nav),
+        date: item.date,
+        source: item.source,
+      })) ?? [];
+
+    rows.push(...chunk);
+
+    if (chunk.length < DATABASE_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return rows;
+}
+
+async function readAllFundHoldingRows() {
+  const rows: FundHoldingRecord[] = [];
+
+  for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+    const to = from + DATABASE_PAGE_SIZE - 1;
+    const { data, error } = await db
+      .from("fund_holdings")
+      .select("fund_code, stock_code, weight, date")
+      .order("date", { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      throw error;
+    }
+
+    const chunk =
+      data?.map((item) => ({
+        fund_code: item.fund_code,
+        stock_code: item.stock_code,
+        weight: Number(item.weight),
+        date: item.date,
+      })) ?? [];
+
+    rows.push(...chunk);
+
+    if (chunk.length < DATABASE_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return rows;
+}
+
 async function readDatabaseDataset(): Promise<FundDataset> {
   try {
-    const [{ data: fundsData, error: fundsError }, { data: navData, error: navError }, { data: holdingsData, error: holdingsError }] =
+    const [{ data: fundsData, error: fundsError }, navData, holdingsData] =
       await Promise.all([
         db.from("funds").select("code, name, company").order("code"),
-        db.from("fund_nav").select("fund_code, nav, date, source").order("date"),
-        db.from("fund_holdings").select("fund_code, stock_code, weight, date").order("date", { ascending: false }),
+        readAllFundNavRows(),
+        readAllFundHoldingRows(),
       ]);
 
-    if (fundsError || navError || holdingsError) {
-      throw fundsError ?? navError ?? holdingsError;
+    if (fundsError) {
+      throw fundsError;
     }
 
     return {
@@ -130,20 +197,8 @@ async function readDatabaseDataset(): Promise<FundDataset> {
           name: item.name,
           company: item.company,
         })) ?? [],
-      nav:
-        navData?.map((item) => ({
-          fund_code: item.fund_code,
-          nav: Number(item.nav),
-          date: item.date,
-          source: item.source,
-        })) ?? [],
-      holdings:
-        holdingsData?.map((item) => ({
-          fund_code: item.fund_code,
-          stock_code: item.stock_code,
-          weight: Number(item.weight),
-          date: item.date,
-        })) ?? [],
+      nav: navData,
+      holdings: holdingsData,
       updatedAt: new Date().toISOString(),
     };
   } catch {
