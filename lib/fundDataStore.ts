@@ -157,7 +157,7 @@ export async function getFundDataset() {
     readDatabaseDataset(),
   ]);
 
-  return mergeDatasets(databaseData, localData);
+  return mergeDatasets(localData, databaseData);
 }
 
 export async function persistFundData(input: {
