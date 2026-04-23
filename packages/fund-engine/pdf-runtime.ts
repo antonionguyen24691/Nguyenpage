@@ -1,31 +1,49 @@
-import { createRequire } from "node:module";
-type PdfParseModule = typeof import("pdf-parse");
+type PdfJsModule = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
 
-const require = createRequire(import.meta.url);
+let cachedPdfJsModule: PdfJsModule | null = null;
 
-let cachedPdfParseModule: PdfParseModule | null = null;
-
-function loadPdfParseModule() {
-  if (!cachedPdfParseModule) {
-    const entryPath = require.resolve("pdf-parse");
-    const loadModule = Function("loader", "modulePath", "return loader(modulePath);") as (
-      loader: typeof require,
-      modulePath: string,
-    ) => PdfParseModule;
-    cachedPdfParseModule = loadModule(require, entryPath);
+async function loadPdfJs() {
+  if (!cachedPdfJsModule) {
+    cachedPdfJsModule = await import("pdfjs-dist/legacy/build/pdf.mjs");
   }
 
-  return cachedPdfParseModule;
+  return cachedPdfJsModule;
 }
 
 export async function extractPdfTextFromBuffer(buffer: Buffer) {
-  const { PDFParse } = loadPdfParseModule();
-  const parser = new PDFParse({ data: buffer });
+  const pdfjs = await loadPdfJs();
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(buffer),
+    disableFontFace: true,
+    isEvalSupported: false,
+    useSystemFonts: false,
+  });
+  const pdf = await loadingTask.promise;
 
   try {
-    const pdfData = await parser.getText();
-    return pdfData.text;
+    const pageTexts: string[] = [];
+
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+
+      try {
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item) => ("str" in item ? item.str : ""))
+          .filter(Boolean)
+          .join(" ");
+
+        if (pageText) {
+          pageTexts.push(pageText);
+        }
+      } finally {
+        page.cleanup();
+      }
+    }
+
+    return pageTexts.join("\n");
   } finally {
-    await parser.destroy();
+    await loadingTask.destroy();
+    await pdf.destroy();
   }
 }
