@@ -13,6 +13,21 @@ export type FundSyncJobState = {
   data?: unknown;
 };
 
+export type FundHoldingsSyncReportItem = {
+  success: boolean;
+  fund: string;
+  periods: string[];
+  source: string;
+  holdings_extracted: number;
+  note?: string;
+  error?: string;
+};
+
+export type FundHoldingsSyncReport = {
+  generatedAt: string;
+  results: FundHoldingsSyncReportItem[];
+};
+
 type HoldingDocumentHistoryRecord = {
   sourceUrl: string;
   processedAt: string;
@@ -23,6 +38,7 @@ type FundHoldingsCrawlHistory = Record<string, Record<string, HoldingDocumentHis
 
 const FUND_SYNC_JOB_STATE_KEY = "fund_sync_job_state";
 const FUND_HOLDINGS_CRAWL_HISTORY_KEY = "fund_holdings_crawl_history";
+const FUND_HOLDINGS_SYNC_REPORT_KEY = "fund_holdings_sync_report";
 const MAX_HISTORY_PERIODS_PER_FUND = 24;
 
 const defaultFundSyncJobState: FundSyncJobState = {
@@ -74,6 +90,25 @@ export async function saveFundSyncJobState(jobState: FundSyncJobState) {
 
 export async function getFundHoldingsCrawlHistory() {
   return getConfigValue<FundHoldingsCrawlHistory>(FUND_HOLDINGS_CRAWL_HISTORY_KEY, {});
+}
+
+export async function getFundHoldingsSyncReport() {
+  return getConfigValue<FundHoldingsSyncReport | null>(FUND_HOLDINGS_SYNC_REPORT_KEY, null);
+}
+
+export async function saveFundHoldingsSyncReport(report: FundHoldingsSyncReport) {
+  try {
+    return await saveConfigValue(FUND_HOLDINGS_SYNC_REPORT_KEY, report);
+  } catch (error) {
+    console.warn("Unable to persist fund holdings sync report", error);
+    return {
+      persistedToDatabase: false,
+      persistedToLocalFile: false,
+      databaseError: error instanceof Error ? error.message : "Unknown error",
+      localFileError: null,
+      localPath: null,
+    };
+  }
 }
 
 export async function getProcessedHoldingPeriods(fundCodes: string[]) {

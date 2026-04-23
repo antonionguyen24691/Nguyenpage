@@ -111,7 +111,101 @@ function extractTickerCandidates(sectionText: string, fundCode: string) {
   return tickers;
 }
 
+function extractNumericToken(value: string) {
+  if (!/^-?\d{1,3}(?:\.\d+)?%?$/.test(value)) {
+    return null;
+  }
+
+  const numeric = Number(value.replace("%", ""));
+  if (!Number.isFinite(numeric) || numeric <= 0 || numeric > 100) {
+    return null;
+  }
+
+  return numeric;
+}
+
+function tokenizeHoldingBlock(sectionText: string) {
+  return sectionText
+    .replace(/\r/g, "\n")
+    .replace(/[|•]/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function extractHoldingsFromTokenBlock(fundCode: string, sectionText: string) {
+  const tokens = tokenizeHoldingBlock(sectionText);
+  const holdings: ExtractedHolding[] = [];
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index].replace(/[^A-Z0-9.-]/g, "");
+    if (!/^[A-Z][A-Z0-9.-]{1,7}$/.test(token)) {
+      continue;
+    }
+    if (token === fundCode || token.startsWith("VINACAPITAL") || STOP_TICKERS.has(token)) {
+      continue;
+    }
+
+    let weight: number | null = null;
+    for (let lookahead = index + 1; lookahead < Math.min(tokens.length, index + 12); lookahead += 1) {
+      const numeric = extractNumericToken(tokens[lookahead]);
+      if (numeric === null) {
+        continue;
+      }
+      weight = numeric;
+      index = lookahead;
+      break;
+    }
+
+    if (weight === null) {
+      continue;
+    }
+
+    holdings.push({
+      stock_code: token,
+      weight,
+    });
+  }
+
+  const deduped = new Map<string, ExtractedHolding>();
+  for (const item of holdings) {
+    if (!deduped.has(item.stock_code)) {
+      deduped.set(item.stock_code, item);
+    }
+  }
+
+  return [...deduped.values()].slice(0, 10);
+}
+
+function extractHoldingsFromStructuredBlocks(fundCode: string, pdfText: string) {
+  const normalized = normalizeText(pdfText);
+  const blockPatterns = [
+    /Ticker\s+Sector\s+% of NAV([\s\S]{0,2000}?)(?:TOTAL\s+\d+(?:\.\d+)?|Performance Summary|Monthly Commentary|Top 10 Holdings)/i,
+    /Top Holdings\s+Security Name\s+Allocation \(%\)\s+Effective Yield\(%\)\s+Duration \(years\)([\s\S]{0,2000}?)(?:Fund Information|Contact Information|Disclaimer|--\s+\d+\s+of\s+\d+\s+--)/i,
+    /Top Holdings\s+Security Name\s+Allocation \(%\)([\s\S]{0,2000}?)(?:Fund Information|Contact Information|Disclaimer|--\s+\d+\s+of\s+\d+\s+--)/i,
+  ];
+
+  for (const pattern of blockPatterns) {
+    const match = normalized.match(pattern);
+    if (!match?.[1]) {
+      continue;
+    }
+
+    const holdings = extractHoldingsFromTokenBlock(fundCode, match[1]);
+    if (holdings.length >= 5) {
+      return holdings;
+    }
+  }
+
+  return [];
+}
+
 function extractHoldingsHeuristically(fundCode: string, pdfText: string): ExtractedHolding[] {
+  const structuredHoldings = extractHoldingsFromStructuredBlocks(fundCode, pdfText);
+  if (structuredHoldings.length >= 5) {
+    return structuredHoldings;
+  }
+
   const secondPageText = getSecondPageText(pdfText);
   const lines = secondPageText.split("\n").map((line) => line.trim()).filter(Boolean);
   const monthLineIndex = lines.findIndex((line) => /Jan\s+Feb\s+Mar/i.test(line));

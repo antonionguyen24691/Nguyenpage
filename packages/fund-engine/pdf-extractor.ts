@@ -3,7 +3,11 @@ import { pathToFileURL } from "node:url";
 import * as cheerio from "cheerio";
 import { fundCatalog } from "@/lib/fundCatalog";
 import { persistFundData } from "@/lib/fundDataStore";
-import { getProcessedHoldingPeriods, markHoldingPeriodProcessed } from "@/lib/fundSyncState";
+import {
+  getProcessedHoldingPeriods,
+  markHoldingPeriodProcessed,
+  saveFundHoldingsSyncReport,
+} from "@/lib/fundSyncState";
 import { extractHoldingsFromText } from "../ai/holdings-extraction";
 
 type HoldingRow = {
@@ -41,7 +45,7 @@ const SSIAM_PAGES: Record<string, string> = {
   "SSI-EF": "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-ef",
 };
 
-const DRAGON_CODES = new Set(["DCDS", "DCDE", "DCBF", "DCIP"]);
+const DRAGON_CODES = new Set(["DCDS", "DCDE", "DCBF", "DCIP", "DCBC"]);
 const VINA_CODES = new Set(["VEOF", "VESAF", "VFF", "VIBF", "VDEF", "VLBF", "VMEEF"]);
 const MAX_HISTORICAL_PERIODS = 4;
 const USER_AGENT =
@@ -185,6 +189,100 @@ function dedupeHoldings(rows: HoldingRow[]) {
   );
 }
 
+function groupCells(values: string[], size: number) {
+  const groups: string[][] = [];
+  for (let index = 0; index + size - 1 < values.length; index += size) {
+    groups.push(values.slice(index, index + size));
+  }
+  return groups;
+}
+
+function extractCurrentSsiamHoldings($: cheerio.CheerioAPI, fundCode: string, currentDate: string) {
+  const rows: HoldingRow[] = [];
+  const currentCells = $(".assetDistribution_table table td")
+    .map((_, cell) => $(cell).text().trim())
+    .get()
+    .filter(Boolean);
+
+  for (const cells of groupCells(currentCells, 4)) {
+    if (cells.length < 4) {
+      continue;
+    }
+
+    const stockCode = cells[0].trim().toUpperCase();
+    const weight = parseWeight(cells[3]);
+    if (stockCode && weight !== null) {
+      rows.push({
+        fund_code: fundCode,
+        stock_code: stockCode,
+        weight,
+        date: currentDate,
+      });
+    }
+  }
+
+  return dedupeHoldings(rows);
+}
+
+function parseDragonHoldingsTableV2(fundCode: string, html: string, reportDate: string) {
+  const $ = cheerio.load(html);
+  const rows: HoldingRow[] = [];
+
+  $("table").each((_, table) => {
+    const rowValues: string[][] = [];
+    $(table)
+      .find("tr")
+      .each((__, tr) => {
+        const cells = $(tr)
+          .find("th,td")
+          .map((___, cell) => $(cell).text().trim())
+          .get()
+          .filter(Boolean);
+        if (cells.length > 0) {
+          rowValues.push(cells);
+        }
+      });
+
+    if (rowValues.length === 0) {
+      return;
+    }
+
+    const flattened = rowValues.flat();
+    const detectorText = `${rowValues[0].join(" | ")} | ${flattened.join(" | ")}`;
+    if (
+      !/(Mã Cổ Phiếu|Ma Co Phieu|Cổ phiếu|Co phieu|Ticker)/i.test(detectorText) ||
+      !/(% NAV|Tỷ trọng|Ty trong)/i.test(detectorText)
+    ) {
+      return;
+    }
+
+    const candidateRows = rowValues.some((cells) => cells.length >= 3)
+      ? rowValues
+      : groupCells(flattened, 3);
+
+    for (const cells of candidateRows) {
+      if (cells.length < 3) {
+        continue;
+      }
+
+      const stockCode = cells[0].replace(/\s+/g, "").toUpperCase();
+      const weight = parseWeight(cells[cells.length - 1]);
+      if (!/^[A-Z][A-Z0-9.-]{1,7}$/.test(stockCode) || weight === null) {
+        continue;
+      }
+
+      rows.push({
+        fund_code: fundCode,
+        stock_code: stockCode,
+        weight,
+        date: reportDate,
+      });
+    }
+  });
+
+  return dedupeHoldings(rows);
+}
+
 async function fetchHtml(url: string) {
   const response = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
@@ -249,25 +347,11 @@ async function collectSSIAMHoldings(
   const holdingsDateText = $(".assetDistribution__content__note").first().text().trim();
   const currentDate = parseMonthDate(holdingsDateText);
   if (currentDate && !processedPeriods.has(currentDate)) {
-    $(".assetDistribution_table table tbody tr").each((_, element) => {
-      const cells = $(element)
-        .find("td")
-        .map((__, cell) => $(cell).text().trim())
-        .get();
-      if (cells.length >= 4) {
-        const stockCode = cells[0].trim().toUpperCase();
-        const weight = parseWeight(cells[3]);
-        if (stockCode && weight !== null) {
-          rows.push({
-            fund_code: fundCode,
-            stock_code: stockCode,
-            weight,
-            date: currentDate,
-          });
-          periods.add(currentDate);
-        }
-      }
-    });
+    const currentRows = extractCurrentSsiamHoldings($, fundCode, currentDate);
+    for (const row of currentRows) {
+      rows.push(row);
+      periods.add(currentDate);
+    }
 
     if (rows.some((row) => row.date === currentDate)) {
       processedDocuments.push({
@@ -281,11 +365,15 @@ async function collectSSIAMHoldings(
   const documentLinks = $(".formDocument__document_item")
     .map((_, element) => {
       const title = $(element).find(".formDocument__document_title").text().trim();
-      const href = $(element).find('a[title="Download"]').attr("href");
+      const href =
+        $(element).find('a[title="Download"]').attr("href") ??
+        $(element).find("a[href$='.pdf']").attr("href") ??
+        $(element).find("[data-url$='.pdf']").attr("data-url") ??
+        null;
       return { title, href };
     })
     .get()
-    .filter((item) => item.href && /monthly report/i.test(item.title))
+    .filter((item) => item.href && /(monthly report|báo cáo hoạt động quỹ|bao cao hoat dong quy)/i.test(item.title))
     .slice(0, MAX_HISTORICAL_PERIODS);
 
   for (const document of documentLinks) {
@@ -408,6 +496,20 @@ async function collectDragonHoldings(
   const rows: HoldingRow[] = [];
   const periods = new Set<string>();
   const processedDocuments: ProcessedHoldingDocument[] = [];
+  const notes: string[] = [];
+
+  if (urls.length === 0) {
+    return {
+      success: false,
+      fund: fundCode,
+      periods: [],
+      source: "Dragon Capital sitemap + article holdings tables",
+      holdings_extracted: 0,
+      note: "No Dragon Capital article URLs matched this fund",
+      rows: [],
+      processedDocuments: [],
+    };
+  }
 
   for (const url of urls) {
     const hintedReportDate = parseDragonArticleDate(url, "");
@@ -420,7 +522,7 @@ async function collectDragonHoldings(
     if (!reportDate || periods.has(reportDate) || processedPeriods.has(reportDate)) {
       continue;
     }
-    let articleRows = parseDragonHoldingsTable(fundCode, html, reportDate);
+    let articleRows = parseDragonHoldingsTableV2(fundCode, html, reportDate);
     let sourceUrl = url;
     if (articleRows.length === 0) {
       const pdfUrl = extractDragonPdfUrl(html);
@@ -428,9 +530,12 @@ async function collectDragonHoldings(
         try {
           articleRows = await extractHoldingsFromPdfUrl(fundCode, pdfUrl, reportDate);
           sourceUrl = pdfUrl;
-        } catch {
+        } catch (error: unknown) {
+          notes.push(`${reportDate}: ${error instanceof Error ? error.message : "Dragon PDF extraction failed"}`);
           articleRows = [];
         }
+      } else {
+        notes.push(`${reportDate}: no holdings table or PDF found`);
       }
     }
     if (articleRows.length > 0) {
@@ -453,6 +558,7 @@ async function collectDragonHoldings(
     periods: [...periods].sort((left, right) => new Date(right).getTime() - new Date(left).getTime()),
     source: "Dragon Capital sitemap + article holdings tables",
     holdings_extracted: rows.length,
+    note: notes.length > 0 ? notes.join(" | ") : undefined,
     rows: dedupeHoldings(rows),
     processedDocuments,
   };
@@ -625,5 +731,9 @@ export async function syncAllHoldings() {
   for (const code of targets) {
     results.push(await processFundHoldings(code, processedPeriodMap.get(code) ?? new Set()));
   }
+  await saveFundHoldingsSyncReport({
+    generatedAt: new Date().toISOString(),
+    results,
+  });
   return results;
 }
