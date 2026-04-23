@@ -1,5 +1,4 @@
 import { createRequire } from "node:module";
-
 type PdfParseModule = typeof import("pdf-parse");
 
 const require = createRequire(import.meta.url);
@@ -8,7 +7,12 @@ let cachedPdfParseModule: PdfParseModule | null = null;
 
 function loadPdfParseModule() {
   if (!cachedPdfParseModule) {
-    cachedPdfParseModule = require("pdf-parse") as PdfParseModule;
+    const entryPath = require.resolve("pdf-parse");
+    const loadModule = Function("loader", "modulePath", "return loader(modulePath);") as (
+      loader: typeof require,
+      modulePath: string,
+    ) => PdfParseModule;
+    cachedPdfParseModule = loadModule(require, entryPath);
   }
 
   return cachedPdfParseModule;

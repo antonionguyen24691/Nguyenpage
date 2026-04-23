@@ -186,6 +186,22 @@ function absoluteUrl(url: string, base: string) {
   return new URL(url, base).toString();
 }
 
+function unwrapTrackedUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (/safelinks\.protection\.outlook\.com$/i.test(parsed.hostname)) {
+      const originalUrl = parsed.searchParams.get("url");
+      if (originalUrl) {
+        return decodeURIComponent(originalUrl);
+      }
+    }
+  } catch {
+    // Ignore malformed URLs and use the raw value.
+  }
+
+  return url;
+}
+
 function buildRequestHeaders(
   url: string,
   accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -335,12 +351,13 @@ async function fetchFirstAvailableHtml(urls: string[]) {
 }
 
 async function extractHoldingsFromPdfUrl(fundCode: string, pdfUrl: string, reportDate: string) {
-  const response = await fetch(pdfUrl, {
-    headers: buildRequestHeaders(pdfUrl, "application/pdf,application/octet-stream;q=0.9,*/*;q=0.8"),
+  const resolvedPdfUrl = unwrapTrackedUrl(pdfUrl);
+  const response = await fetch(resolvedPdfUrl, {
+    headers: buildRequestHeaders(resolvedPdfUrl, "application/pdf,application/octet-stream;q=0.9,*/*;q=0.8"),
     cache: "no-store",
   });
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status} for ${pdfUrl}`);
+    throw new Error(`HTTP ${response.status} for ${resolvedPdfUrl}`);
   }
   const buffer = Buffer.from(await response.arrayBuffer());
   const pdfText = await extractPdfTextFromBuffer(buffer);
@@ -501,7 +518,7 @@ function parseDragonHoldingsTable(fundCode: string, html: string, reportDate: st
 
 function extractDragonPdfUrl(html: string) {
   const match = html.match(/https:\/\/[^"' ]+\.pdf/gi);
-  return match?.[0] ?? null;
+  return match ? unwrapTrackedUrl(match[0]) : null;
 }
 
 async function collectDragonHoldings(
