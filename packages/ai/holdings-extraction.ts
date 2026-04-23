@@ -177,6 +177,39 @@ function extractHoldingsFromTokenBlock(fundCode: string, sectionText: string) {
   return [...deduped.values()].slice(0, 10);
 }
 
+function extractHoldingsFromMetricTable(fundCode: string, sectionText: string) {
+  const normalized = sectionText.replace(/\s+/g, " ").trim();
+  const pattern =
+    /\b([A-Z][A-Z0-9.-]{1,7})\b\s+(.+?)\s+(\d{1,2}(?:\.\d+)?)\s+(\d{1,2}(?:\.\d+)?)\s+(\d{1,2}(?:\.\d+)?)(?=\s+[A-Z][A-Z0-9.-]{1,7}\s+|$)/g;
+  const holdings: ExtractedHolding[] = [];
+
+  for (const match of normalized.matchAll(pattern)) {
+    const stockCode = match[1].toUpperCase();
+    if (stockCode === fundCode || stockCode.startsWith("VINACAPITAL") || STOP_TICKERS.has(stockCode)) {
+      continue;
+    }
+
+    const weight = extractNumericToken(match[3]);
+    if (weight === null) {
+      continue;
+    }
+
+    holdings.push({
+      stock_code: stockCode,
+      weight,
+    });
+  }
+
+  const deduped = new Map<string, ExtractedHolding>();
+  for (const item of holdings) {
+    if (!deduped.has(item.stock_code)) {
+      deduped.set(item.stock_code, item);
+    }
+  }
+
+  return [...deduped.values()].slice(0, 10);
+}
+
 function extractHoldingsFromStructuredBlocks(fundCode: string, pdfText: string) {
   const normalized = normalizeText(pdfText);
   const blockPatterns = [
@@ -189,6 +222,11 @@ function extractHoldingsFromStructuredBlocks(fundCode: string, pdfText: string) 
     const match = normalized.match(pattern);
     if (!match?.[1]) {
       continue;
+    }
+
+    const metricTableHoldings = extractHoldingsFromMetricTable(fundCode, match[1]);
+    if (metricTableHoldings.length >= 5) {
+      return metricTableHoldings;
     }
 
     const holdings = extractHoldingsFromTokenBlock(fundCode, match[1]);
