@@ -1,8 +1,7 @@
 import * as cheerio from "cheerio";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import * as XLSX from "xlsx";
 import { fundCatalog, getFundCatalogEntry, type FundCatalogEntry } from "@/lib/fundCatalog";
+import { extractPdfTextFromBuffer } from "./pdf-runtime";
 
 type FundData = {
   fund: string;
@@ -12,11 +11,23 @@ type FundData = {
 };
 
 const productIdCache = new Map<string, number | null>();
-const SSIAM_PAGE_MAP: Record<string, string> = {
-  VLGF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-vlgf",
-  SSISCA: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-sca",
-  SSIBF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssibf",
-  "SSI-EF": "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-ef",
+const SSIAM_PAGE_CANDIDATES: Record<string, string[]> = {
+  VLGF: [
+    "https://ssiam.com.vn/thong-tin-chung-quy-vlgf",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-vlgf",
+  ],
+  SSISCA: [
+    "https://ssiam.com.vn/thong-tin-chung-quy-ssi-sca",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-sca",
+  ],
+  SSIBF: [
+    "https://ssiam.com.vn/thong-tin-chung-quy-ssibf",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssibf",
+  ],
+  "SSI-EF": [
+    "https://ssiam.com.vn/thong-tin-chung-quy-ssi-ef",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-ef",
+  ],
 };
 const DRAGON_CODES = new Set(["DCDS", "DCDE", "DCBF", "DCIP"]);
 const USER_AGENT =
@@ -27,9 +38,6 @@ const DEFAULT_HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 };
 const DEFAULT_CRAWL_CONCURRENCY = 3;
-const PDF_WORKER_URL = pathToFileURL(
-  path.join(process.cwd(), "node_modules", "pdf-parse", "dist", "pdf-parse", "web", "pdf.worker.min.mjs"),
-).href;
 
 function formatRequestDate(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -123,19 +131,14 @@ function extractDragonMonthFromUrl(url: string) {
 
 async function extractPdfText(pdfUrl: string) {
   const response = await fetch(pdfUrl, {
-    headers: { "User-Agent": "Mozilla/5.0" },
+    headers: DEFAULT_HEADERS,
     cache: "no-store",
   });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} for ${pdfUrl}`);
   }
   const buffer = Buffer.from(await response.arrayBuffer());
-  const { PDFParse } = await import("pdf-parse");
-  PDFParse.setWorker(PDF_WORKER_URL);
-  const parser = new PDFParse({ data: buffer });
-  const pdfData = await parser.getText();
-  await parser.destroy();
-  return pdfData.text;
+  return extractPdfTextFromBuffer(buffer);
 }
 
 function extractVinaOfficialNav(entry: FundCatalogEntry, text: string, fallbackDate: string | null = null) {
@@ -460,17 +463,34 @@ async function fetchVinaStaticNav(entry: FundCatalogEntry): Promise<FundData[]> 
 }
 
 async function fetchSsiamNav(entry: FundCatalogEntry): Promise<FundData[]> {
-  const pageUrl = SSIAM_PAGE_MAP[entry.code];
-  if (!pageUrl) {
+  const pageCandidates = SSIAM_PAGE_CANDIDATES[entry.code];
+  if (!pageCandidates) {
     return [];
   }
 
   try {
-    const response = await fetch(pageUrl, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      cache: "no-store",
-    });
-    const html = await response.text();
+    let html: string | null = null;
+
+    for (const pageUrl of pageCandidates) {
+      const response = await fetch(pageUrl, {
+        headers: DEFAULT_HEADERS,
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        continue;
+      }
+
+      html = await response.text();
+      if (html) {
+        break;
+      }
+    }
+
+    if (!html) {
+      return [];
+    }
+
     const $ = cheerio.load(html);
     const rows: FundData[] = [];
 

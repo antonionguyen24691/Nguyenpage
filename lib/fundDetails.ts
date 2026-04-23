@@ -48,11 +48,23 @@ export type FundDetailsPayload = {
   documents: FundDetailDocument[];
 };
 
-const SSIAM_PAGE_MAP: Record<string, string> = {
-  VLGF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-vlgf",
-  SSISCA: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-sca",
-  SSIBF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssibf",
-  "SSI-EF": "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-ef",
+const SSIAM_PAGE_CANDIDATES: Record<string, string[]> = {
+  VLGF: [
+    "https://ssiam.com.vn/thong-tin-chung-quy-vlgf",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-vlgf",
+  ],
+  SSISCA: [
+    "https://ssiam.com.vn/thong-tin-chung-quy-ssi-sca",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-sca",
+  ],
+  SSIBF: [
+    "https://ssiam.com.vn/thong-tin-chung-quy-ssibf",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssibf",
+  ],
+  "SSI-EF": [
+    "https://ssiam.com.vn/thong-tin-chung-quy-ssi-ef",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-ef",
+  ],
 };
 
 const DRAGON_PAGE_MAP: Record<string, string> = {
@@ -173,6 +185,28 @@ function absoluteUrl(url: string, base: string) {
   return new URL(url, base).toString();
 }
 
+async function resolveFirstAvailableUrl(urls: string[]) {
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        cache: "no-store",
+      });
+
+      if (response.ok) {
+        return {
+          url,
+          html: await response.text(),
+        };
+      }
+    } catch {
+      // ignore and continue with the fallback candidate
+    }
+  }
+
+  return null;
+}
+
 function inferDocumentDate(href: string) {
   const compact = href.match(/(20\d{6})/);
   if (compact) {
@@ -230,7 +264,7 @@ function buildVinaDocuments(entry: FundCatalogEntry, referenceDate: string | nul
 }
 
 function buildSsiamDocuments(entry: FundCatalogEntry, referenceDate: string | null) {
-  const pageUrl = SSIAM_PAGE_MAP[entry.code];
+  const pageUrl = SSIAM_PAGE_CANDIDATES[entry.code]?.[0];
   if (!pageUrl) {
     return [];
   }
@@ -270,21 +304,18 @@ function buildDragonDocuments(entry: FundCatalogEntry, referenceDate: string | n
 }
 
 async function fetchSsiamDocuments(entry: FundCatalogEntry) {
-  const pageUrl = SSIAM_PAGE_MAP[entry.code];
-  if (!pageUrl) {
+  const pageCandidates = SSIAM_PAGE_CANDIDATES[entry.code];
+  if (!pageCandidates) {
     return [];
   }
 
   try {
-    const response = await fetch(pageUrl, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      cache: "no-store",
-    });
-    if (!response.ok) {
+    const resolved = await resolveFirstAvailableUrl(pageCandidates);
+    if (!resolved) {
       return [];
     }
 
-    const html = await response.text();
+    const { url: pageUrl, html } = resolved;
     const $ = cheerio.load(html);
     const documents = new Map<string, FundDetailDocument>();
 

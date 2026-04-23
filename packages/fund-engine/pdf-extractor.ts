@@ -7,6 +7,7 @@ import {
   saveFundHoldingsSyncReport,
 } from "@/lib/fundSyncState";
 import { extractHoldingsFromText } from "../ai/holdings-extraction";
+import { extractPdfTextFromBuffer } from "./pdf-runtime";
 
 type HoldingRow = {
   fund_code: string;
@@ -36,11 +37,23 @@ type HoldingsCollectorResult = HoldingsSyncResult & {
   processedDocuments: ProcessedHoldingDocument[];
 };
 
-const SSIAM_PAGES: Record<string, string> = {
-  VLGF: "https://ssiam.com.vn/thong-tin-chung-quy-vlgf",
-  SSISCA: "https://ssiam.com.vn/thong-tin-chung-quy-ssi-sca",
-  SSIBF: "https://ssiam.com.vn/thong-tin-chung-quy-ssibf",
-  "SSI-EF": "https://ssiam.com.vn/thong-tin-chung-quy-ssi-ef",
+const SSIAM_PAGE_CANDIDATES: Record<string, string[]> = {
+  VLGF: [
+    "https://ssiam.com.vn/thong-tin-chung-quy-vlgf",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-vlgf",
+  ],
+  SSISCA: [
+    "https://ssiam.com.vn/thong-tin-chung-quy-ssi-sca",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-sca",
+  ],
+  SSIBF: [
+    "https://ssiam.com.vn/thong-tin-chung-quy-ssibf",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssibf",
+  ],
+  "SSI-EF": [
+    "https://ssiam.com.vn/thong-tin-chung-quy-ssi-ef",
+    "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-ef",
+  ],
 };
 
 const DRAGON_CODES = new Set(["DCDS", "DCDE", "DCBF", "DCIP", "DCBC"]);
@@ -173,6 +186,21 @@ function absoluteUrl(url: string, base: string) {
   return new URL(url, base).toString();
 }
 
+function buildRequestHeaders(
+  url: string,
+  accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+) {
+  const target = new URL(url);
+
+  return {
+    "User-Agent": USER_AGENT,
+    "Accept-Language": "vi,en-US;q=0.9,en;q=0.8",
+    Accept: accept,
+    Referer: `${target.origin}/`,
+    Origin: target.origin,
+  };
+}
+
 function dedupeHoldings(rows: HoldingRow[]) {
   const unique = new Map<string, HoldingRow>();
   for (const row of rows) {
@@ -279,7 +307,7 @@ function parseDragonHoldingsTableV2(fundCode: string, html: string, reportDate: 
 
 async function fetchHtml(url: string) {
   const response = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT },
+    headers: buildRequestHeaders(url),
     cache: "no-store",
   });
   if (!response.ok) {
@@ -288,20 +316,35 @@ async function fetchHtml(url: string) {
   return response.text();
 }
 
+async function fetchFirstAvailableHtml(urls: string[]) {
+  const errors: string[] = [];
+
+  for (const url of urls) {
+    try {
+      return {
+        url,
+        html: await fetchHtml(url),
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown fetch error";
+      errors.push(`${url}: ${message}`);
+    }
+  }
+
+  throw new Error(errors.join(" | "));
+}
+
 async function extractHoldingsFromPdfUrl(fundCode: string, pdfUrl: string, reportDate: string) {
   const response = await fetch(pdfUrl, {
-    headers: { "User-Agent": USER_AGENT },
+    headers: buildRequestHeaders(pdfUrl, "application/pdf,application/octet-stream;q=0.9,*/*;q=0.8"),
     cache: "no-store",
   });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} for ${pdfUrl}`);
   }
   const buffer = Buffer.from(await response.arrayBuffer());
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: buffer });
-  const pdfData = await parser.getText();
-  await parser.destroy();
-  const holdings = await extractHoldingsFromText(fundCode, pdfData.text, reportDate);
+  const pdfText = await extractPdfTextFromBuffer(buffer);
+  const holdings = await extractHoldingsFromText(fundCode, pdfText, reportDate);
   return holdings
     .map((item: { stock_code: string; weight: number }) => ({
       fund_code: fundCode,
@@ -316,8 +359,8 @@ async function collectSSIAMHoldings(
   fundCode: string,
   processedPeriods: Set<string>,
 ): Promise<HoldingsCollectorResult> {
-  const pageUrl = SSIAM_PAGES[fundCode];
-  if (!pageUrl) {
+  const pageCandidates = SSIAM_PAGE_CANDIDATES[fundCode];
+  if (!pageCandidates) {
     return {
       success: false,
       fund: fundCode,
@@ -330,7 +373,7 @@ async function collectSSIAMHoldings(
     };
   }
 
-  const html = await fetchHtml(pageUrl);
+  const { url: pageUrl, html } = await fetchFirstAvailableHtml(pageCandidates);
   const $ = cheerio.load(html);
   const rows: HoldingRow[] = [];
   const periods = new Set<string>();
@@ -614,7 +657,7 @@ export async function processFundHoldings(
   processedPeriods: Set<string> = new Set(),
 ) {
   try {
-    if (SSIAM_PAGES[fundCode]) {
+    if (SSIAM_PAGE_CANDIDATES[fundCode]) {
       const result = await collectSSIAMHoldings(fundCode, processedPeriods);
       if (result.rows.length > 0) {
         await persistFundData({
@@ -717,7 +760,7 @@ export async function processFundHoldings(
 export async function syncAllHoldings() {
   const targets = fundCatalog
     .map((entry) => entry.code)
-    .filter((code) => SSIAM_PAGES[code] || DRAGON_CODES.has(code) || VINA_CODES.has(code));
+    .filter((code) => SSIAM_PAGE_CANDIDATES[code] || DRAGON_CODES.has(code) || VINA_CODES.has(code));
   const processedPeriodMap = await getProcessedHoldingPeriods(targets);
 
   const results = [];
