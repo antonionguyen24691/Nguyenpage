@@ -1,5 +1,3 @@
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import * as cheerio from "cheerio";
 import { fundCatalog } from "@/lib/fundCatalog";
 import { persistFundData } from "@/lib/fundDataStore";
@@ -39,10 +37,10 @@ type HoldingsCollectorResult = HoldingsSyncResult & {
 };
 
 const SSIAM_PAGES: Record<string, string> = {
-  VLGF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-vlgf",
-  SSISCA: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-sca",
-  SSIBF: "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssibf",
-  "SSI-EF": "https://ssiam.com.vn/ssiam/thong-tin-chung-quy-ssi-ef",
+  VLGF: "https://ssiam.com.vn/thong-tin-chung-quy-vlgf",
+  SSISCA: "https://ssiam.com.vn/thong-tin-chung-quy-ssi-sca",
+  SSIBF: "https://ssiam.com.vn/thong-tin-chung-quy-ssibf",
+  "SSI-EF": "https://ssiam.com.vn/thong-tin-chung-quy-ssi-ef",
 };
 
 const DRAGON_CODES = new Set(["DCDS", "DCDE", "DCBF", "DCIP", "DCBC"]);
@@ -51,10 +49,6 @@ const MAX_HISTORICAL_PERIODS = 4;
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const VINA_PDF_DAYS = ["08", "10", "12", "14", "15", "18", "20", "25"];
-const PDF_WORKER_URL = pathToFileURL(
-  path.join(process.cwd(), "node_modules", "pdf-parse", "dist", "pdf-parse", "web", "pdf.worker.min.mjs"),
-).href;
-
 function monthStart(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
@@ -304,7 +298,6 @@ async function extractHoldingsFromPdfUrl(fundCode: string, pdfUrl: string, repor
   }
   const buffer = Buffer.from(await response.arrayBuffer());
   const { PDFParse } = await import("pdf-parse");
-  PDFParse.setWorker(PDF_WORKER_URL);
   const parser = new PDFParse({ data: buffer });
   const pdfData = await parser.getText();
   await parser.destroy();
