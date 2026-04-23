@@ -1,9 +1,26 @@
 type PdfJsModule = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+type CanvasModule = typeof import("@napi-rs/canvas");
 
 let cachedPdfJsModule: PdfJsModule | null = null;
+let nodeCanvasGlobalsReady = false;
+
+async function ensurePdfJsNodeGlobals() {
+  if (nodeCanvasGlobalsReady) {
+    return;
+  }
+
+  const canvasModule = (await import("@napi-rs/canvas")) as CanvasModule;
+  const globalScope = globalThis as any;
+
+  globalScope.DOMMatrix ??= canvasModule.DOMMatrix;
+  globalScope.ImageData ??= canvasModule.ImageData;
+  globalScope.Path2D ??= canvasModule.Path2D;
+  nodeCanvasGlobalsReady = true;
+}
 
 async function loadPdfJs() {
   if (!cachedPdfJsModule) {
+    await ensurePdfJsNodeGlobals();
     cachedPdfJsModule = await import("pdfjs-dist/legacy/build/pdf.mjs");
   }
 
